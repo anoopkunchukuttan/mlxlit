@@ -1,0 +1,33 @@
+Folder structure
+
+data:
+contains 4 folders
+* mono_train: Monolingual training data
+	contains files with name 'lang', e.g. 'hi', 'kn' etc
+* parallel_train: Parallel training data
+	contains files with name 'lang1-lang2.lang1' and 'lang1-lang2.lang2', e.g. 'hi-kn.hi', 'hi-kn.kn' etc. For each language pair, there must be 2 files
+* parallel_valid: Parallel Validation data
+	contains files with name 'lang1-lang2.lang1' and 'lang1-lang2.lang2', e.g. 'hi-kn.hi', 'hi-kn.kn' etc. For each language pair, there must be 2 files, both of which have equal word. hi-kn.hi will have hindi words and hi-kn.kn will have kannada words
+* parallel_test: Test data
+	contains files with name 'lang1-lang2'. Data is in lang1, and after validation model will output it in lang2
+
+What to do with ModelTraining.py Code to add new languages
+=========================================================
+Modify the 4 language lists:
+	mono_langs- For monolingual data 'hi' add 'hi' in the list
+	parallel_train_langs- For parallel data 'hi-kn.hi' and 'hi-kn.kn', add ('hi','kn') in the list.
+	parallel_valid_langs- For parallel data 'hi-kn.hi' and 'hi-kn.kn', add ('hi','kn') in the list
+	test_langs- For language pair 'hi-kn', add ('hi','kn')
+	* Ordering of languages in tuple must be same as that in the filenames
+
+These 4 correspond to above 4 folders. Languages specified in these lists must exist in the folders
+
+Extract data to data/ folder
+Add indicnlp/indic_nlp_library and indicnlp/indic_nlp_resources from
+* https://github.com/anoopkunchukuttan/indic_nlp_library
+* https://github.com/anoopkunchukuttan/indic_nlp_resources
+
+Finding accuracy:
+=================
+
+Run python accuracy.py target_file_path_(typically_in_data/_folder)  predicted_file_path_(typically in outputs folder)
