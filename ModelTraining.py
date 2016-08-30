@@ -9,7 +9,14 @@ import ParallelDataReader
 import tensorflow as tf
 import numpy as np 
 
+from indicnlp import loader
+
 if __name__ == '__main__' :
+
+        #### Load Indic NLP Library ###
+        ## Note: Environment variable: INDIC_RESOURCES_PATH must be set
+        loader.load()
+
 	#####################################
 	#    Command line argument parser   #
 	#####################################

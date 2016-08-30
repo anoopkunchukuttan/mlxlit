@@ -3,16 +3,16 @@ import numpy as np
 
 ########Importing indicnlp library for phonetic feature vector
 
-# The path to the local git repo for Indic NLP library
-INDIC_NLP_LIB_HOME="indicnlp/indic_nlp_library"
+## The path to the local git repo for Indic NLP library
+#INDIC_NLP_LIB_HOME="indicnlp/indic_nlp_library"
+#import sys
+#sys.path.append('{}/src'.format(INDIC_NLP_LIB_HOME))
 # The path to the local git repo for Indic NLP Resources
-INDIC_NLP_RESOURCES="indicnlp/indic_nlp_resources"
-import sys
-sys.path.append('{}/src'.format(INDIC_NLP_LIB_HOME))
-from indicnlp import common
-common.set_resources_path(INDIC_NLP_RESOURCES)
-from indicnlp import loader
-loader.load()
+#INDIC_NLP_RESOURCES="indicnlp/indic_nlp_resources"
+#from indicnlp import common
+#common.set_resources_path(INDIC_NLP_RESOURCES)
+#from indicnlp import loader
+#loader.load()
 from indicnlp.script import  indic_scripts as isc
 
 class Mapping():

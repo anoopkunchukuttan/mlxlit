@@ -11,21 +11,30 @@ contains 4 folders
 * parallel_test: Test data
 	contains files with name 'lang1-lang2'. Data is in lang1, and after validation model will output it in lang2
 
-What to do with ModelTraining.py Code to add new languages
-=========================================================
+## What to do with ModelTraining.py Code to add new languages
+
 Modify the 4 language lists:
-	mono_langs- For monolingual data 'hi' add 'hi' in the list
-	parallel_train_langs- For parallel data 'hi-kn.hi' and 'hi-kn.kn', add ('hi','kn') in the list.
-	parallel_valid_langs- For parallel data 'hi-kn.hi' and 'hi-kn.kn', add ('hi','kn') in the list
-	test_langs- For language pair 'hi-kn', add ('hi','kn')
-	* Ordering of languages in tuple must be same as that in the filenames
+
+	- mono_langs- For monolingual data 'hi' add 'hi' in the list
+	- parallel_train_langs- For parallel data 'hi-kn.hi' and 'hi-kn.kn', add ('hi','kn') in the list.
+	- parallel_valid_langs- For parallel data 'hi-kn.hi' and 'hi-kn.kn', add ('hi','kn') in the list
+	- test_langs- For language pair 'hi-kn', add ('hi','kn')
+
+	* Note: Ordering of languages in tuple must be same as that in the filenames * 
 
 These 4 correspond to above 4 folders. Languages specified in these lists must exist in the folders
 
-Extract data to data/ folder
-Add indicnlp/indic_nlp_library and indicnlp/indic_nlp_resources from
-* https://github.com/anoopkunchukuttan/indic_nlp_library
-* https://github.com/anoopkunchukuttan/indic_nlp_resources
+## Getting Started 
+
+- Extract data to data/ folder
+- Clone the following repositories: Add indicnlp/indic_nlp_library and indicnlp/indic_nlp_resources from
+
+   - https://github.com/anoopkunchukuttan/indic_nlp_library
+   - https://github.com/anoopkunchukuttan/indic_nlp_resources
+
+- Add indic_nlp_library/src to PYTHONPATH environment variable 
+- Export the environment variable INDIC_RESOURCES_PATH with the path set to the root of the indic_nlp_resources repo
+- Run ModelTraining.py. See the file for options 
 
 Finding accuracy:
 =================
