@@ -60,8 +60,10 @@ import time
 
 import numpy as np
 import tensorflow as tf
+import sys
 
-from tensorflow.models.rnn.ptb import reader
+from lm_eval import reader
+from indicnlp import loader
 
 flags = tf.flags
 logging = tf.logging
@@ -70,6 +72,9 @@ flags.DEFINE_string(
     "model", "small",
     "A type of model. Possible options are: small, medium, large.")
 flags.DEFINE_string("data_path", None, "data_path")
+flags.DEFINE_string(
+    "train_size", -1,
+    "Size of the training data (number of sentences). Take the 'train_size' from the training file for training. If not specified, the entire training file is taken.")
 
 FLAGS = flags.FLAGS
 
@@ -108,19 +113,22 @@ class PTBModel(object):
     # This builds an unrolled LSTM for tutorial purposes only.
     # In general, use the rnn() or state_saving_rnn() from rnn.py.
     #
-    # The alternative version of the code below is:
-    #
-    # from tensorflow.models.rnn import rnn
-    # inputs = [tf.squeeze(input_, [1])
-    #           for input_ in tf.split(1, num_steps, inputs)]
-    # outputs, state = rnn.rnn(cell, inputs, initial_state=self._initial_state)
-    outputs = []
-    state = self._initial_state
-    with tf.variable_scope("RNN"):
-      for time_step in range(num_steps):
-        if time_step > 0: tf.get_variable_scope().reuse_variables()
-        (cell_output, state) = cell(inputs[:, time_step, :], state)
-        outputs.append(cell_output)
+    ##The alternative version of the code below is:
+    
+    #from tensorflow.models.rnn import rnn
+    inputs = [tf.squeeze(input_, [1])
+              for input_ in tf.split(1, num_steps, inputs)]
+    outputs, state = tf.nn.rnn(cell, inputs, initial_state=self._initial_state)
+
+    #### Tutorial version 
+
+    #outputs = []
+    #state = self._initial_state
+    #with tf.variable_scope("RNN"):
+    #  for time_step in range(num_steps):
+    #    if time_step > 0: tf.get_variable_scope().reuse_variables()
+    #    (cell_output, state) = cell(inputs[:, time_step, :], state)
+    #    outputs.append(cell_output)
 
     output = tf.reshape(tf.concat(1, outputs), [-1, size])
     softmax_w = tf.get_variable("softmax_w", [size, vocab_size])
@@ -188,7 +196,8 @@ class SmallConfig(object):
   keep_prob = 1.0
   lr_decay = 0.5
   batch_size = 20
-  vocab_size = 10000
+  #vocab_size = 10000
+  vocab_size = 125
 
 
 class MediumConfig(object):
@@ -277,8 +286,18 @@ def get_config():
 
 
 def main(_):
+  #### Load Indic NLP Library ###
+  ## Note: Environment variable: INDIC_RESOURCES_PATH must be set
+  loader.load()
+
   if not FLAGS.data_path:
     raise ValueError("Must set --data_path to PTB data directory")
+
+  print('===========  PARAMETERS  ==============')
+  print('Data Path: ' + FLAGS.data_path)
+  print('Config: ' + FLAGS.model)
+  print('Corpus Size: ' + str(FLAGS.train_size))
+  print('===========  PARAMETERS  ==============')
 
   raw_data = reader.ptb_raw_data(FLAGS.data_path)
   train_data, valid_data, test_data, _ = raw_data
