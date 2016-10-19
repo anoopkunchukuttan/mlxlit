@@ -1,5 +1,6 @@
 import argparse
 import os
+import codecs
 
 import Model
 import Mapping
@@ -242,7 +243,7 @@ if __name__ == '__main__' :
                     predicted_sequences_ids = sess.run(infer_output[lang_pair], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths})
                     predicted_sequences = mapping.get_words_from_id_lists(predicted_sequences_ids,target_lang)
                     if completed_epochs % infer_every == 0:
-                        open(out_folder+str(completed_epochs).zfill(3)+source_lang+'-'+target_lang+'_','w').write('\n'.join(predicted_sequences))
+                        codecs.open(out_folder+str(completed_epochs).zfill(3)+source_lang+'-'+target_lang+'_','w','utf-8').write(u'\n'.join(predicted_sequences))
 
             # Save current model
             if(cont == True):

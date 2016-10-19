@@ -1,10 +1,11 @@
 import sys
+import codecs 
 
 # Finding actual end of words and trims the actual target sequences
 # starts from character after GO and take till EOW
 
-target_sequences = map(lambda x: x.split()+['EOW'], open(sys.argv[1],'r').readlines())
-# target_sequences = [ x[ 1 : x.index('EOW') ] for x in target_sequences]
+target_sequences = map(lambda x: x.split()+[u'EOW'], codecs.open(sys.argv[1],'r','utf-8').readlines())
+# target_sequences = [ x[ 1 : x.index(u'EOW') ] for x in target_sequences]
 lengths = map(len,target_sequences)             # Actual sequence length
 num_words = len(target_sequences)
 num_chars = sum(lengths)+0.0            # Total number of character

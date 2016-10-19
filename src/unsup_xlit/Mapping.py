@@ -30,20 +30,20 @@ class Mapping():
         # Bit: 0 to 37, phonetic features from indicnlp library of the character
         # Bit: 38, 39 and 40 are set for GO, EOW, PAD resp.
         def get_feature_vector(self, char_, lang):
-                if(char_ == 'GO'):
+                if(char_ == u'GO'):
                         a=np.zeros([41])
                         a[38]=1
                         return a
-                elif(char_ == 'EOW'):
+                elif(char_ == u'EOW'):
                         a=np.zeros([41])
                         a[39]=1
                         return a
-                elif(char_ == 'PAD'):
+                elif(char_ == u'PAD'):
                         a=np.zeros([41])
                         a[40]=1
                         return a
                 else:
-                        return np.append(isc.get_phonetic_feature_vector(char_.decode('utf-8'),lang),[0.,0.,0.])
+                        return np.append(isc.get_phonetic_feature_vector(char_,lang),[0.,0.,0.])
 
         # return character to id dictionary of language lang
         # Must be called after all data is read
@@ -93,7 +93,7 @@ class Mapping():
         # Given sequence of character ids, return word.
         # A word is space separated character with GO, EOW (End of Word) and PAD character to make total length = max_sequence_length
         def get_word_from_ids(self,sequence,lang):
-                return ' '.join([self.i2c[lang][char_id] for char_id in sequence])
+                return u' '.join([self.i2c[lang][char_id] for char_id in sequence])
 
 
         # Given a list of (sequence of character_ids), return list of words     

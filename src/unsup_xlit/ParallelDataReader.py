@@ -1,4 +1,6 @@
 import numpy as np
+import codecs 
+
 class ParallelDataReader():
         # Initializer and data reader
         def __init__(self, lang1, lang2, filename1, filename2, mapping, max_sequence_length):
@@ -38,14 +40,14 @@ class ParallelDataReader():
         # Reads file with given name and lang
         def read_file(self, filename, lang):
                 # Reading the file
-                file_read = map(lambda x: ['GO']+(x.strip().split(' '))[:self.max_sequence_length-2]+['EOW'],open(filename,'r').readlines())
+                file_read = map(lambda x: [u'GO']+(x.strip().split(' '))[:self.max_sequence_length-2]+[u'EOW'],codecs.open(filename,'r','utf-8').readlines())
 
                 #lengths is list of lengths of all words. i.e. a list of integers with size num_words in dataset 
                 self.lengths[lang] = np.array(map(lambda x: len(x), file_read))
                 self.num_words[lang] = len(self.lengths[lang])
 
                 #Adding PAD to the words to make each word length = max_sequence_length
-                file_read = map(lambda x: x+['PAD']*(self.max_sequence_length-len(x)),file_read)
+                file_read = map(lambda x: x+[u'PAD']*(self.max_sequence_length-len(x)),file_read)
 
                 # replacing character with corresponding character id
                 self.sequences[lang] = np.array([[self.c2i[lang][char] for char in word] for word in file_read], dtype = np.int32)

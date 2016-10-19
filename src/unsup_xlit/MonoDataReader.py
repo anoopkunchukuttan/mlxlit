@@ -1,4 +1,5 @@
 import numpy as np
+import codecs
 
 class MonoDataReader():
     # Initializer and data reader
@@ -11,16 +12,14 @@ class MonoDataReader():
 
         # Reading the file
         # NOTE: -2 should be -1 
-        file_read = map(lambda x: ['GO']+(x.strip().split(' '))[:max_sequence_length-2]+['EOW'],open(filename,'r').readlines())
-        for s in file_read: 
-            print ' '.join(s)
+        file_read = map(lambda x: [u'GO']+(x.strip().split(' '))[:max_sequence_length-2]+[u'EOW'],codecs.open(filename,'r','utf-8').readlines())
 
         #lengths is list of lengths of all words. i.e. a list of integers with size num_words in dataset 
         self.lengths = np.array(map(lambda x: len(x), file_read))
         self.num_words = len(self.lengths)
 
         #Adding PAD to the words to make each word length = max_sequence_length
-        file_read = map(lambda x: x+['PAD']*(max_sequence_length-len(x)),file_read)
+        file_read = map(lambda x: x+[u'PAD']*(max_sequence_length-len(x)),file_read)
 
         # replacing character with corresponding character id
         self.sequences = np.array([[self.c2i[char] for char in word] for word in file_read], dtype = np.int32)
