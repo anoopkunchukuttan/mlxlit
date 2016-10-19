@@ -140,6 +140,7 @@ if __name__ == '__main__' :
     # For each pair of language, return sum of loss of transliteration one script to another and vice versa
     validation_seq_loss = dict()
     for lang_pair in parallel_valid_langs:
+        lang1,lang2=lang_pair
         validation_seq_loss[lang_pair] = model.seq_loss_2(
                 lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
                 lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
