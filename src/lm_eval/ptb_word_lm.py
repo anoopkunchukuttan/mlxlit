@@ -62,19 +62,23 @@ import numpy as np
 import tensorflow as tf
 import sys
 
-from lm_eval import reader
 from indicnlp import loader
+
+from lm_eval import reader
+
 
 flags = tf.flags
 logging = tf.logging
 
+flags.DEFINE_string("data_path", None, "data_path")
+flags.DEFINE_string("lang", None, "Language")
+flags.DEFINE_string("representation", "phonetic", "Representation of characters. Can take one of two values: phonetic or onehot")
+flags.DEFINE_integer(
+    "train_size", -1,
+    "Size of the training data (number of sentences). Take the 'train_size' from the training file for training. If not specified, the entire training file is taken.")
 flags.DEFINE_string(
     "model", "small",
     "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", None, "data_path")
-flags.DEFINE_string(
-    "train_size", -1,
-    "Size of the training data (number of sentences). Take the 'train_size' from the training file for training. If not specified, the entire training file is taken.")
 
 FLAGS = flags.FLAGS
 
@@ -87,6 +91,7 @@ class PTBModel(object):
     self.num_steps = num_steps = config.num_steps
     size = config.hidden_size
     vocab_size = config.vocab_size
+    lang=config.lang
 
     self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
     self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
@@ -103,8 +108,14 @@ class PTBModel(object):
     self._initial_state = cell.zero_state(batch_size, tf.float32)
 
     with tf.device("/cpu:0"):
-      embedding = tf.get_variable("embedding", [vocab_size, size])
-      inputs = tf.nn.embedding_lookup(embedding, self._input_data)
+      #embedding = tf.get_variable("embedding", [vocab_size, size])
+      #inputs = tf.nn.embedding_lookup(embedding, self._input_data)
+
+      bit_vector_embeddings=reader.get_bitvector_embeddings(lang,vocab_size,config.representation)
+      bv_embedding_size=int(bit_vector_embeddings.get_shape()[1])
+      embedding = tf.get_variable("embedding", [bv_embedding_size,size])
+      embedding_wrapper  = tf.matmul(bit_vector_embeddings , embedding)
+      inputs = tf.nn.embedding_lookup(embedding_wrapper, self._input_data)
 
     if is_training and config.keep_prob < 1:
       inputs = tf.nn.dropout(inputs, config.keep_prob)
@@ -115,7 +126,6 @@ class PTBModel(object):
     #
     ##The alternative version of the code below is:
     
-    #from tensorflow.models.rnn import rnn
     inputs = [tf.squeeze(input_, [1])
               for input_ in tf.split(1, num_steps, inputs)]
     outputs, state = tf.nn.rnn(cell, inputs, initial_state=self._initial_state)
@@ -182,7 +192,6 @@ class PTBModel(object):
   def train_op(self):
     return self._train_op
 
-
 class SmallConfig(object):
   """Small config."""
   init_scale = 0.1
@@ -196,41 +205,11 @@ class SmallConfig(object):
   keep_prob = 1.0
   lr_decay = 0.5
   batch_size = 20
-  #vocab_size = 10000
+
+  ### not hyper-parameters
   vocab_size = 125
-
-
-class MediumConfig(object):
-  """Medium config."""
-  init_scale = 0.05
-  learning_rate = 1.0
-  max_grad_norm = 5
-  num_layers = 2
-  num_steps = 35
-  hidden_size = 650
-  max_epoch = 6
-  max_max_epoch = 39
-  keep_prob = 0.5
-  lr_decay = 0.8
-  batch_size = 20
-  vocab_size = 10000
-
-
-class LargeConfig(object):
-  """Large config."""
-  init_scale = 0.04
-  learning_rate = 1.0
-  max_grad_norm = 10
-  num_layers = 2
-  num_steps = 35
-  hidden_size = 1500
-  max_epoch = 14
-  max_max_epoch = 55
-  keep_prob = 0.35
-  lr_decay = 1 / 1.15
-  batch_size = 20
-  vocab_size = 10000
-
+  lang = 'hi'
+  representation= 'phonetic'
 
 class TestConfig(object):
   """Tiny config, for testing."""
@@ -245,8 +224,11 @@ class TestConfig(object):
   keep_prob = 1.0
   lr_decay = 0.5
   batch_size = 20
-  vocab_size = 10000
 
+  ### not hyper-parameters
+  vocab_size = 10000
+  lang = 'hi'
+  representation= 'phonetic'
 
 def run_epoch(session, m, data, eval_op, verbose=False):
   """Runs the model on the given data."""
@@ -275,10 +257,6 @@ def run_epoch(session, m, data, eval_op, verbose=False):
 def get_config():
   if FLAGS.model == "small":
     return SmallConfig()
-  elif FLAGS.model == "medium":
-    return MediumConfig()
-  elif FLAGS.model == "large":
-    return LargeConfig()
   elif FLAGS.model == "test":
     return TestConfig()
   else:
@@ -295,17 +273,28 @@ def main(_):
 
   print('===========  PARAMETERS  ==============')
   print('Data Path: ' + FLAGS.data_path)
-  print('Config: ' + FLAGS.model)
+  print('Representation: ' + FLAGS.representation)
+  print('Language: ' + str(FLAGS.lang))
   print('Corpus Size: ' + str(FLAGS.train_size))
+  print('Config: ' + FLAGS.model)
   print('===========  PARAMETERS  ==============')
 
-  raw_data = reader.ptb_raw_data(FLAGS.data_path)
-  train_data, valid_data, test_data, _ = raw_data
+  raw_data = reader.ptb_raw_data(FLAGS.data_path,FLAGS.lang,FLAGS.train_size)
+  train_data, valid_data, test_data, actual_vocab_size = raw_data
+  print('Actual Vocab Size: ' + str(actual_vocab_size))
 
+  ### set parameters   
   config = get_config()
+  config.vocab_size=actual_vocab_size
+  config.lang=FLAGS.lang
+  config.representation=FLAGS.representation 
+
   eval_config = get_config()
   eval_config.batch_size = 1
   eval_config.num_steps = 1
+  eval_config.vocab_size=actual_vocab_size
+  eval_config.lang=FLAGS.lang
+  eval_config.representation=FLAGS.representation 
 
   with tf.Graph().as_default(), tf.Session() as session:
     initializer = tf.random_uniform_initializer(-config.init_scale,
@@ -331,7 +320,6 @@ def main(_):
 
     test_perplexity = run_epoch(session, mtest, test_data, tf.no_op())
     print("Test Perplexity: %.3f" % test_perplexity)
-
 
 if __name__ == "__main__":
   tf.app.run()
