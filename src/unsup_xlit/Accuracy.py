@@ -11,7 +11,7 @@ num_words = len(target_sequences)
 num_chars = sum(lengths)+0.0            # Total number of character
 
 # Trim predicted sequences so as to match size with the actual words
-predicted_sequences = map(lambda x: x.split(), open(sys.argv[2],'r').readlines())
+predicted_sequences = map(lambda x: x.split(), codecs.open(sys.argv[2],'r','utf-8').readlines())
 predicted_sequences_trimmed = [predicted_sequences[i][1:lengths[i]+1] for i in range(num_words)]
 
 correct_words = 0.0
