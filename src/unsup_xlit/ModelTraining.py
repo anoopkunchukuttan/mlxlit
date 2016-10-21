@@ -31,9 +31,15 @@ if __name__ == '__main__' :
     parser.add_argument('--max_seq_length', type = int, default = 50, help = 'maximum sequence length')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
     parser.add_argument('--data_dir', type = str, help = 'data directory')
+    parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic" or "onehot"')
     parser.add_argument('--output_folder', type = str, default = 'output', help = 'output folder name. embedding size, batch size, learning rate, timestamp will be automatically added to the folder name')
     parser.add_argument('--start_from', type = str, default = None, help = 'location of saved model, to be used for starting')
     args = parser.parse_args()
+
+    print '========== Parameters start ==========='
+    for k,v in vars(args).iteritems():
+        print '{}: {}'.format(k,v)
+    print '========== Parameters end ============='
 
     #Parsing arguments
     embedding_size = args.embedding_size
@@ -42,6 +48,7 @@ if __name__ == '__main__' :
     learning_rate = args.learning_rate
     max_sequence_length = args.max_seq_length
     data_dir = args.data_dir
+    representation = args.representation
     infer_every = args.infer_every
     import calendar,time
     output_folder = args.output_folder+'_e'+str(embedding_size)+'_b'+str(batch_size)+'_lr'+str(learning_rate)+'_'+str(calendar.timegm(time.gmtime()))
@@ -79,6 +86,14 @@ if __name__ == '__main__' :
         parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
 
+    ## complete vocabulary creation         
+    mapping.finalize_vocab()    
+
+    print '========== Vocabulary Details start ==========='
+    for k,v in vars(args).iteritems():
+        print '{}: {}'.format(k,v)
+    print '========== Vocabulary Details end ============='
+
     # Reading parallel Validation data
     parallel_valid_langs = [('hi','kn')]
     parallel_valid_data = dict()
@@ -100,7 +115,7 @@ if __name__ == '__main__' :
     ###################################################################
 
     # Creating Model object
-    model = Model.Model(mapping,embedding_size,max_sequence_length) # Pass parameters
+    model = Model.Model(mapping,representation,embedding_size,max_sequence_length) # Pass parameters
 
     # Creating placeholder for sequences, masks and lengths
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)

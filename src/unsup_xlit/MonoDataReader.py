@@ -7,7 +7,6 @@ class MonoDataReader():
         # Taking args and storing as class vars
         self.lang = lang
         self.mapping = mapping
-        self.c2i = mapping.get_c2i(lang)
         self.max_sequence_length = max_sequence_length
 
         # Reading the file
@@ -22,7 +21,7 @@ class MonoDataReader():
         file_read = map(lambda x: x+[u'PAD']*(max_sequence_length-len(x)),file_read)
 
         # replacing character with corresponding character id
-        self.sequences = np.array([[self.c2i[char] for char in word] for word in file_read], dtype = np.int32)
+        self.sequences = np.array([[self.mapping.get_index(char,lang) for char in word] for word in file_read], dtype = np.int32)
 
         # Creating masks. Mask has size = size of list of sequence. 
         # Corresponding to each PAD character there is a zero, for all other there is a 1

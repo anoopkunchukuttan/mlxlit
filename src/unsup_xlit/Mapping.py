@@ -1,101 +1,124 @@
 from collections import defaultdict
 import numpy as np 
 
-########Importing indicnlp library for phonetic feature vector
+import tensorflow as tf 
 
-## The path to the local git repo for Indic NLP library
-#INDIC_NLP_LIB_HOME="indicnlp/indic_nlp_library"
-#import sys
-#sys.path.append('{}/src'.format(INDIC_NLP_LIB_HOME))
-# The path to the local git repo for Indic NLP Resources
-#INDIC_NLP_RESOURCES="indicnlp/indic_nlp_resources"
-#from indicnlp import common
-#common.set_resources_path(INDIC_NLP_RESOURCES)
-#from indicnlp import loader
-#loader.load()
 from indicnlp.script import  indic_scripts as isc
+from indicnlp import langinfo as li
 
 class Mapping():
-        # c2i: character to id dictionaries. key is language code e.g. hi, kn etc. c2i[lang] is a defaultdict.
-        # To get id for a character use: c2i[lang][char]. No need to add anything explicitly. Defaultdict will take care
-        # i2c: id to character dictionaries. structure and usage same as c2i
 
-        def __init__(self):
-                self.c2i = dict()
-                self.i2c = None
+    GO=u'GO'
+    EOW=u'EOW'
+    PAD=u'PAD'
+    UNK=u'UNK'
 
-        # 'char_' is a character of language 'lang'
-        # Structure of vector returned:
-        # Size: 41
-        # Bit: 0 to 37, phonetic features from indicnlp library of the character
-        # Bit: 38, 39 and 40 are set for GO, EOW, PAD resp.
-        def get_feature_vector(self, char_, lang):
-                if(char_ == u'GO'):
-                        a=np.zeros([41])
-                        a[38]=1
-                        return a
-                elif(char_ == u'EOW'):
-                        a=np.zeros([41])
-                        a[39]=1
-                        return a
-                elif(char_ == u'PAD'):
-                        a=np.zeros([41])
-                        a[40]=1
-                        return a
-                else:
-                        return np.append(isc.get_phonetic_feature_vector(char_,lang),[0.,0.,0.])
+    def __init__(self): 
 
-        # return character to id dictionary of language lang
-        # Must be called after all data is read
-        def get_c2i(self,lang):
-                if lang not in self.c2i:
-                        self.c2i[lang] = defaultdict(lambda: len(self.c2i[lang]))
-                return self.c2i[lang]
+        ### members
+        self.addvocab_c2i=defaultdict(lambda: li.COORDINATED_RANGE_END_INCLUSIVE + 1 + len(self.addvocab_c2i))
+        self.addvocab_i2c={}
+        self.lang_list=set()
+        
+        ## state members 
+        self.update_mode=True
 
-        # Generates i2c dictionaries from c2i dictionaries. This should be called only after all data is read.
-        # It is safer to call this after completely reading data, otherwise it is automatically called by other functions
-        def generate_i2c(self):
-                self.i2c = dict()
-                for lang in self.c2i.keys():
-                        self.i2c[lang]=dict()
-                        for char in self.c2i[lang].keys():
-                                idx = self.c2i[lang][char]
-                                self.i2c[lang][idx]=char
+        ## add standard vocabulary 
+        self.addvocab_c2i[Mapping.GO]
+        self.addvocab_c2i[Mapping.EOW]
+        self.addvocab_c2i[Mapping.PAD]
+        self.addvocab_c2i[Mapping.UNK]
 
-        # Return id to character dictionary of the language 'lang'
-        def get_i2c(self,lang):
-                if(self.i2c == None):
-                        self.generate_i2c()
-                return self.i2c[lang]
+    def finalize_vocab(self): 
+        """
+        Call after all vocabulary has been added via get_index
+        """
+        for c,i in self.addvocab_c2i.iteritems(): 
+            #print c.encode('utf-8')
+            self.addvocab_i2c[i]=c
+        self.update_mode=False
 
-        # Generated and return return phonetic vectors for all languages
-        # a dictionary is returned, language codes are whose keys
-        # Value of phoenetic_vectors[lang] is np-array of dimensions (vocab_size of lang) x (feature vector size = 41)
-        def get_phonetic_vectors(self):
-                if(self.i2c == None):
-                        self.generate_i2c()
-                phonetic_vectors = dict()
-                for lang in self.c2i.keys():
-                        phonetic_vectors[lang] = np.asarray([self.get_feature_vector(self.i2c[lang][i],lang) for i in range(len(self.i2c[lang]))])
-                return phonetic_vectors
+    def get_index(self,c,lang): 
+        if len(c)==1 and isc.in_coordinated_range(c,lang): 
+            index=isc.get_offset(c,lang)
+        else:
+            if (not self.update_mode) and (c not in self.addvocab_c2i): 
+                c=Mapping.UNK
+            index=self.addvocab_c2i[c]
 
-        # Return list of language codes of all languages it knows
-        def get_langs(self):
-                return self.c2i.keys()
+        if self.update_mode: 
+            self.lang_list.add(lang)
 
-        # Return a dictionary {lang: (vocab_size of lang)....}
-        def get_vocab_sizes(self):
-                vocab_sizes = dict()
-                for lang in self.c2i.keys():
-                        vocab_sizes[lang] = len(self.c2i[lang])
-                return vocab_sizes
+        return index
 
-        # Given sequence of character ids, return word.
-        # A word is space separated character with GO, EOW (End of Word) and PAD character to make total length = max_sequence_length
-        def get_word_from_ids(self,sequence,lang):
-                return u' '.join([self.i2c[lang][char_id] for char_id in sequence])
+    def get_char(self,index,lang): 
+        if isc.in_coordinated_range_offset(index): 
+            c=isc.offset_to_char(index,lang)
+        else: 
+            c=self.addvocab_i2c.get(index,Mapping.UNK)
+        return c
 
+    def get_langs(self): 
+        return self.lang_list 
 
-        # Given a list of (sequence of character_ids), return list of words     
-        def get_words_from_id_lists(self,sequences,lang):
-                return [self.get_word_from_ids(sequence, lang) for sequence in sequences]
+    def get_vocab_size(self): 
+        return (li.COORDINATED_RANGE_END_INCLUSIVE + 1 + len(self.addvocab_c2i))
+
+    def get_vocab(self,lang): 
+        return [ self.get_char(i,lang) for i in range(0,self.get_vocab_size()) ]
+
+    def get_bitvector_embedding_size(self,representation): 
+        if representation=='phonetic':
+            return isc.PHONETIC_VECTOR_LENGTH+len(self.addvocab_c2i)
+        elif representation=='onehot': 
+            return self.get_vocab_size()
+
+    def get_phonetic_bitvector_embeddings(self,lang):
+        """
+        Create bit-vector embeddings for vocabulary items. For phonetic chars,
+        use phonetic embeddings, else use 1-hot embeddings
+        """
+    
+        ##  phonetic embeddings for basic characters 
+        pv=isc.get_phonetic_info(lang)[1]
+    
+        ## vocab statistics
+        pv=np.copy(pv)
+        org_shape=pv.shape
+        additional_vocab=self.get_vocab_size()-org_shape[0]
+    
+        ##  new rows added 
+        new_rows=np.zeros([additional_vocab,pv.shape[1]])
+        pv=np.concatenate([pv,new_rows])
+    
+        ##  new columns added 
+        new_cols=np.zeros([pv.shape[0],additional_vocab])
+        pv=np.concatenate([pv,new_cols],axis=1)
+    
+        assert( (pv.shape[0]-org_shape[0]) == (pv.shape[1]-org_shape[1]) )
+    
+        ## 1-hot embeddings for new characters 
+        for j,k in zip(range(org_shape[0],pv.shape[0]),range(org_shape[1],pv.shape[1])): 
+            pv[j,k]=1
+    
+        return tf.constant(pv,dtype = tf.float32)
+    
+    def get_onehot_bitvector_embeddings(self,lang): 
+        return tf.constant(np.identity(self.get_vocab_size()),dtype = tf.float32)
+    
+    def get_bitvector_embeddings(self,lang,representation): 
+    
+        if representation=='phonetic':
+            return self.get_phonetic_bitvector_embeddings(lang)
+        elif representation=='onehot': 
+            return self.get_onehot_bitvector_embeddings(lang)
+
+    # Given sequence of character ids, return word.
+    # A word is space separated character with GO, EOW (End of Word) and PAD character to make total length = max_sequence_length
+    def get_word_from_ids(self,sequence,lang):
+            return u' '.join([self.get_char(char_id,lang) for char_id in sequence])
+    
+    # Given a list of (sequence of character_ids), return list of words     
+    def get_words_from_id_lists(self,sequences,lang):
+            return [self.get_word_from_ids(sequence, lang) for sequence in sequences]
+

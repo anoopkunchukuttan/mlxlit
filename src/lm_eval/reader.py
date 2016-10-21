@@ -148,7 +148,6 @@ def get_phonetic_bitvector_embeddings(lang,vocab_size):
     pv=np.concatenate([pv,new_rows])
 
     ##  new columns added 
-    new_rows=np.zeros([additional_vocab,pv.shape[1]])
     new_cols=np.zeros([pv.shape[0],additional_vocab])
     pv=np.concatenate([pv,new_cols],axis=1)
 
