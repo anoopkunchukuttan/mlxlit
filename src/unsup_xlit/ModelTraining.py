@@ -79,7 +79,8 @@ if __name__ == '__main__' :
         mono_train_data[lang] = MonoDataReader.MonoDataReader(lang,data_dir+'/mono_train/'+lang,mapping,max_sequence_length)
 
     # Reading Parallel Training data
-    parallel_train_langs = [('hi','kn')]
+    #parallel_train_langs = [('hi','kn')]
+    parallel_train_langs = []
     parallel_train_data = dict()
     for lang_pair in parallel_train_langs:
         file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'

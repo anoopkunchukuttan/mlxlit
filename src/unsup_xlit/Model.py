@@ -35,6 +35,9 @@ class Model():
 
         # Creating BasicLSTM Cells and initial inputs to decoders
         self.encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+        #number_enc_layers=2
+        #lstm= rnn_cell.BasicLSTMCell(rnn_size)
+        #self.encoder_cell = rnn_cell.MultiRNNCell([lstm] * number_enc_layers)
 
         self.decoder_input = dict()
         for lang in self.lang_list:
