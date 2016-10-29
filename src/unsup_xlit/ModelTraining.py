@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import codecs
 
 import Model
@@ -10,6 +11,7 @@ import ParallelDataReader
 import tensorflow as tf
 import numpy as np 
 
+import calendar,time
 from indicnlp import loader
 
 if __name__ == '__main__' :
@@ -24,16 +26,22 @@ if __name__ == '__main__' :
 
     # Creating parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation and RNN')
     parser.add_argument('--batch_size', type = int, default = 64, help = 'size of each batch used in training')
     parser.add_argument('--max_epochs', type = int, default = 32, help = 'maximum number of epochs')
     parser.add_argument('--learning_rate', type = float, default = 0.001, help = 'learning rate of Adam Optimizer')
     parser.add_argument('--max_seq_length', type = int, default = 50, help = 'maximum sequence length')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
-    parser.add_argument('--data_dir', type = str, help = 'data directory')
+
+    parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation and RNN')
     parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic" or "onehot"')
-    parser.add_argument('--output_folder', type = str, default = 'output', help = 'output folder name. embedding size, batch size, learning rate, timestamp will be automatically added to the folder name')
+    parser.add_argument('--train_mode', type = str, default = 'semisup', help = 'one of "semisup" for semi-supervised or "unsup" for unsupervised learning')
+    parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
+    parser.add_argument('--langs', type = str, default = None, help = 'List of language for unsupervised training given as: "lang1,lang2,lang3,lang4,..."')
+
+    parser.add_argument('--data_dir', type = str, help = 'data directory')
+    parser.add_argument('--output_dir', type = str, help = 'output folder name')
     parser.add_argument('--start_from', type = str, default = None, help = 'location of saved model, to be used for starting')
+
     args = parser.parse_args()
 
     print '========== Parameters start ==========='
@@ -42,26 +50,74 @@ if __name__ == '__main__' :
     print '========== Parameters end ============='
 
     #Parsing arguments
-    embedding_size = args.embedding_size
     batch_size = args.batch_size
     max_epochs = args.max_epochs
     learning_rate = args.learning_rate
     max_sequence_length = args.max_seq_length
-    data_dir = args.data_dir
-    representation = args.representation
     infer_every = args.infer_every
-    import calendar,time
-    output_folder = args.output_folder+'_e'+str(embedding_size)+'_b'+str(batch_size)+'_lr'+str(learning_rate)+'_'+str(calendar.timegm(time.gmtime()))
+
+    embedding_size = args.embedding_size
+    representation = args.representation
+    train_mode = args.train_mode
+    if train_mode=='unsup' and args.langs is None:  
+        print 'ERROR: --langs  has to be set for "unsup" mode'
+        sys.exit(1)
+    elif train_mode=='semisup' and args.lang_pairs is None:  
+        print 'ERROR: --lang_pairs has to be set for "semisup" mode'
+        sys.exit(1)
+    elif train_mode=='unsup' and args.lang_pairs is not None:  
+        print 'WARNING:--lang_pairs is not valid for "unsup" mode, ignoring parameter'
+    elif train_mode=='semisup' and args.langs is not None:  
+        print 'WARNING:--langs is not valid for "semisup" mode, ignoring parameter'
+
+    data_dir = args.data_dir
+    output_dir = args.output_dir #+'_e'+str(embedding_size)+'_b'+str(batch_size)+'_lr'+str(learning_rate)+'_'+str(calendar.timegm(time.gmtime()))
     start_from = args.start_from
     if start_from is not None:
         assert os.path.exists(start_from), "start_from: '"+ start_from +"'' file does not exist"
 
-    # Create output folders if required
-    temp_model_output_folder = output_folder+'/temp_models/'
-    outputs_folder = output_folder+'/outputs/'
-    final_output_folder = output_folder+'/final_output/'
 
-    for folder in [temp_model_output_folder, outputs_folder, final_output_folder]:
+    # Setting the language parameters 
+    mono_langs=None
+    parallel_train_langs=None
+    parallel_valid_langs=None
+    test_langs=None
+
+    ##NOTE: Supports only one language pair currently
+    if train_mode=='semisup':
+        parallel_train_langs=[lp.split('-') for lp in args.lang_pairs.split(',')]
+        if len(parallel_train_langs)>1: 
+            print('Currently only one language pair is supported')
+            sys.exit(0)
+        mono_langs=parallel_train_langs[0]            
+        test_langs=parallel_train_langs 
+        parallel_valid_langs=[parallel_train_langs[0],list(reversed(parallel_train_langs[0]))]
+        print 'Parallel Train, Mono, Parallel Valid, Test Langs'
+        print parallel_train_langs 
+        print mono_langs
+        print parallel_valid_langs 
+        print test_langs 
+    
+    elif train_mode=='unsup':
+        parallel_train_langs=[]
+        mono_langs=args.langs.split(',')
+        if len(mono_langs)>2: 
+            print('Currently only one language pair is supported')
+            sys.exit(0)
+        test_langs=[mono_langs]
+        parallel_valid_langs=[mono_langs,list(reversed(mono_langs))]
+        print 'Parallel Train, Mono, Parallel Valid, Test Langs'
+        print parallel_train_langs 
+        print mono_langs
+        print parallel_valid_langs 
+        print test_langs 
+
+    # Create output folders if required
+    temp_model_output_dir = output_dir+'/temp_models/'
+    outputs_dir = output_dir+'/outputs/'
+    final_output_dir = output_dir+'/final_output/'
+
+    for folder in [temp_model_output_dir, outputs_dir, final_output_dir]:
         if not os.path.exists(folder):
             os.makedirs(folder)
 
@@ -73,14 +129,11 @@ if __name__ == '__main__' :
     mapping = Mapping.Mapping()
 
     # Reading Monolingual Training data
-    mono_langs = ['hi','kn']
     mono_train_data = dict()
     for lang in mono_langs:
         mono_train_data[lang] = MonoDataReader.MonoDataReader(lang,data_dir+'/mono_train/'+lang,mapping,max_sequence_length)
 
     # Reading Parallel Training data
-    #parallel_train_langs = [('hi','kn')]
-    parallel_train_langs = []
     parallel_train_data = dict()
     for lang_pair in parallel_train_langs:
         file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
@@ -96,7 +149,6 @@ if __name__ == '__main__' :
     print '========== Vocabulary Details end ============='
 
     # Reading parallel Validation data
-    parallel_valid_langs = [('hi','kn')]
     parallel_valid_data = dict()
     for lang_pair in parallel_valid_langs:
         file_prefix = data_dir+'/parallel_valid/'+lang_pair[0]+'-'+lang_pair[1]+'.'
@@ -104,7 +156,6 @@ if __name__ == '__main__' :
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
 
     # Reading Test data
-    test_langs = [('hi','kn'),('kn','hi')]
     test_data = dict()
     for lang_pair in test_langs:
         file_name = data_dir+'/test/'+lang_pair[0]+'-'+lang_pair[1]
@@ -238,7 +289,7 @@ if __name__ == '__main__' :
             # If validation loss is increasing since last 3 epochs, take the last 4th model and stop training process
             if(completed_epochs>=4 and all([i>j for (i,j) in zip(validation_losses[-3:],validation_losses[-4:-1])])):
                 completed_epochs -= 3
-                saver.restore(sess,temp_model_output_folder+'my_model-'+str(completed_epochs))
+                saver.restore(sess,temp_model_output_dir+'my_model-'+str(completed_epochs))
                 cont = False
 
             # If max_epochs are done
@@ -248,9 +299,9 @@ if __name__ == '__main__' :
             if(cont == False or (infer_every > 0 and completed_epochs%infer_every == 0)):
                 # If this was the last epoch, output result to final output folder, otherwise to outputs folder
                 if(cont == False):
-                    out_folder = final_output_folder
+                    out_folder = final_output_dir
                 else:
-                    out_folder = outputs_folder
+                    out_folder = outputs_dir
 
                 accuracies = []
                 for lang_pair in test_langs:
@@ -265,7 +316,7 @@ if __name__ == '__main__' :
             # Save current model
             if(cont == True):
                 if(completed_epochs==1 or validation_losses[-1]<validation_losses[-2]):
-                    saver.save(sess, temp_model_output_folder+'my_model', global_step=completed_epochs)
+                    saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
     # save final model
-    final_saver.save(sess,output_folder+'/final_model_epochs_'+str(completed_epochs))
+    final_saver.save(sess,output_dir+'/final_model_epochs_'+str(completed_epochs))
