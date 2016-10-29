@@ -92,11 +92,6 @@ if __name__ == '__main__' :
         mono_langs=parallel_train_langs[0]            
         parallel_valid_langs=parallel_train_langs 
         test_langs=[parallel_train_langs[0],list(reversed(parallel_train_langs[0]))]
-        print 'Parallel Train, Mono, Parallel Valid, Test Langs'
-        print parallel_train_langs 
-        print mono_langs
-        print parallel_valid_langs 
-        print test_langs 
     
     elif train_mode=='unsup':
         parallel_train_langs=[]
@@ -106,11 +101,12 @@ if __name__ == '__main__' :
             sys.exit(0)
         parallel_valid_langs=[mono_langs]
         test_langs =[mono_langs,list(reversed(mono_langs))]
-        print 'Parallel Train, Mono, Parallel Valid, Test Langs'
-        print parallel_train_langs 
-        print mono_langs
-        print parallel_valid_langs 
-        print test_langs 
+
+    print 'Parallel Train, Mono, Parallel Valid, Test Langs'
+    print parallel_train_langs 
+    print mono_langs
+    print parallel_valid_langs 
+    print test_langs 
 
     # Create output folders if required
     temp_model_output_dir = output_dir+'/temp_models/'
