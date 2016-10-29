@@ -90,8 +90,8 @@ if __name__ == '__main__' :
             print('Currently only one language pair is supported')
             sys.exit(0)
         mono_langs=parallel_train_langs[0]            
-        test_langs=parallel_train_langs 
-        parallel_valid_langs=[parallel_train_langs[0],list(reversed(parallel_train_langs[0]))]
+        parallel_valid_langs=parallel_train_langs 
+        test_langs=[parallel_train_langs[0],list(reversed(parallel_train_langs[0]))]
         print 'Parallel Train, Mono, Parallel Valid, Test Langs'
         print parallel_train_langs 
         print mono_langs
@@ -104,8 +104,8 @@ if __name__ == '__main__' :
         if len(mono_langs)>2: 
             print('Currently only one language pair is supported')
             sys.exit(0)
-        test_langs=[mono_langs]
-        parallel_valid_langs=[mono_langs,list(reversed(mono_langs))]
+        parallel_valid_langs=[mono_langs]
+        test_langs =[mono_langs,list(reversed(mono_langs))]
         print 'Parallel Train, Mono, Parallel Valid, Test Langs'
         print parallel_train_langs 
         print mono_langs
