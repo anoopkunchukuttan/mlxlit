@@ -139,11 +139,6 @@ if __name__ == '__main__' :
     ## complete vocabulary creation         
     mapping.finalize_vocab()    
 
-    print '========== Vocabulary Details start ==========='
-    for k,v in vars(args).iteritems():
-        print '{}: {}'.format(k,v)
-    print '========== Vocabulary Details end ============='
-
     # Reading parallel Validation data
     parallel_valid_data = dict()
     for lang_pair in parallel_valid_langs:
