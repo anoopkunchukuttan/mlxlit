@@ -85,13 +85,13 @@ if __name__ == '__main__' :
 
     ##NOTE: Supports only one language pair currently
     if train_mode=='semisup':
-        parallel_train_langs=[lp.split('-') for lp in args.lang_pairs.split(',')]
+        parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
         if len(parallel_train_langs)>1: 
             print('Currently only one language pair is supported')
             sys.exit(0)
-        mono_langs=parallel_train_langs[0]            
+        mono_langs=list(parallel_train_langs[0])            
         parallel_valid_langs=parallel_train_langs 
-        test_langs=[parallel_train_langs[0],list(reversed(parallel_train_langs[0]))]
+        test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
     
     elif train_mode=='unsup':
         parallel_train_langs=[]
@@ -99,8 +99,8 @@ if __name__ == '__main__' :
         if len(mono_langs)>2: 
             print('Currently only one language pair is supported')
             sys.exit(0)
-        parallel_valid_langs=[mono_langs]
-        test_langs =[mono_langs,list(reversed(mono_langs))]
+        parallel_valid_langs=[tuple(mono_langs)]
+        test_langs =[ tuple(mono_langs),tuple(reversed(mono_langs))]
 
     print 'Parallel Train, Mono, Parallel Valid, Test Langs'
     print parallel_train_langs 
