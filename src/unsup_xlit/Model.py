@@ -2,7 +2,7 @@ import ParallelDataReader
 import MonoDataReader
 import Mapping
 
-import numpy as np 
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
 
@@ -20,14 +20,14 @@ class Model():
         self.vocab_size = self.mapping.get_vocab_size()
 
         # Finds bit-vector representation for each character of each language
-        self.bitvector_embeddings={} 
-        for lang in self.lang_list: 
+        self.bitvector_embeddings={}
+        for lang in self.lang_list:
             self.bitvector_embeddings[lang] = self.mapping.get_bitvector_embeddings(lang,self.representation)
-        self.bitvector_embedding_size=self.mapping.get_bitvector_embedding_size(self.representation)    
+        self.bitvector_embedding_size=self.mapping.get_bitvector_embedding_size(self.representation)
 
         # Converting the character representation to embedding_size vector
         max_val = 0.1
-        self.embed_W0 = tf.Variable(tf.random_uniform([self.bitvector_embedding_size,self.embedding_size], -1*max_val, max_val), name = 'embed_W0') 
+        self.embed_W0 = tf.Variable(tf.random_uniform([self.bitvector_embedding_size,self.embedding_size], -1*max_val, max_val), name = 'embed_W0')
         self.embed_W = dict()
         for lang in self.lang_list:
             self.embed_W[lang] = tf.matmul(self.bitvector_embeddings[lang], self.embed_W0)
@@ -42,7 +42,7 @@ class Model():
         self.decoder_input = dict()
         for lang in self.lang_list:
             self.decoder_input[lang] = tf.Variable(tf.random_uniform([1, embedding_size], dtype = tf.float32))
-        
+
         self.decoder_cell = dict()
         for lang in self.lang_list:
             self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(rnn_size)
@@ -60,7 +60,7 @@ class Model():
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x)
         _, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
-        
+
         return states
 
     # Find cross entropy loss in predicting target_sequences from computed hidden representation (intial state)
@@ -75,7 +75,7 @@ class Model():
             # for first iteration, decoder_input embedding is used, otherwise, output from previous iteration is used
             # embedding lookup replace the character index with its embedding_size vector representation, which is given to the rnn_cell
             if(i==0):
-                current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.pack([batch_size,1])),[-1,self.embedding_size])    
+                current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.pack([batch_size,1])),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b
 
@@ -135,7 +135,7 @@ class Model():
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return optimizer
 
-    # Optimizer to minimize mean squared differences of hidden representation of same word from different languages 
+    # Optimizer to minimize mean squared differences of hidden representation of same word from different languages
     # (mean taken over all batch_size x embedding_size elements)
     def get_parallel_difference_optimizer(self,learning_rate,lang1,sequences1,sequence_lengths1,lang2,sequences2,sequence_lengths2):
         hidden_representation1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
@@ -143,7 +143,7 @@ class Model():
 
         squared_difference = tf.squared_difference(hidden_representation1,hidden_representation2)
         mean_squared_difference = tf.reduce_mean(squared_difference)
-        
+
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(mean_squared_difference)
         return optimizer
 
