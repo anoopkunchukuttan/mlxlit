@@ -9,7 +9,7 @@ import MonoDataReader
 import ParallelDataReader
 
 import tensorflow as tf
-import numpy as np 
+import numpy as np
 
 import calendar,time
 from indicnlp import loader
@@ -59,16 +59,21 @@ if __name__ == '__main__' :
     embedding_size = args.embedding_size
     representation = args.representation
     train_mode = args.train_mode
-    if train_mode=='unsup' and args.langs is None:  
+    if train_mode=='unsup' and args.langs is None:
         print 'ERROR: --langs  has to be set for "unsup" mode'
         sys.exit(1)
-    elif train_mode=='semisup' and args.lang_pairs is None:  
+    elif train_mode=='semisup' and args.lang_pairs is None:
         print 'ERROR: --lang_pairs has to be set for "semisup" mode'
         sys.exit(1)
-    elif train_mode=='unsup' and args.lang_pairs is not None:  
+    elif train_mode=='sup' and args.lang_pairs is None:
+        print 'ERROR: --lang_pairs has to be set for "sup" mode'
+        sys.exit(1)
+    elif train_mode=='unsup' and args.lang_pairs is not None:
         print 'WARNING:--lang_pairs is not valid for "unsup" mode, ignoring parameter'
-    elif train_mode=='semisup' and args.langs is not None:  
+    elif train_mode=='semisup' and args.langs is not None:
         print 'WARNING:--langs is not valid for "semisup" mode, ignoring parameter'
+    elif train_mode=='sup' and args.langs is not None:
+        print 'WARNING:--langs is not valid for "sup" mode, ignoring parameter'
 
     data_dir = args.data_dir
     output_dir = args.output_dir #+'_e'+str(embedding_size)+'_b'+str(batch_size)+'_lr'+str(learning_rate)+'_'+str(calendar.timegm(time.gmtime()))
@@ -77,7 +82,7 @@ if __name__ == '__main__' :
         assert os.path.exists(start_from), "start_from: '"+ start_from +"'' file does not exist"
 
 
-    # Setting the language parameters 
+    # Setting the language parameters
     mono_langs=None
     parallel_train_langs=None
     parallel_valid_langs=None
@@ -86,27 +91,35 @@ if __name__ == '__main__' :
     ##NOTE: Supports only one language pair currently
     if train_mode=='semisup':
         parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
-        if len(parallel_train_langs)>1: 
+        if len(parallel_train_langs)>1:
             print('Currently only one language pair is supported')
-            sys.exit(0)
-        mono_langs=list(parallel_train_langs[0])            
-        parallel_valid_langs=parallel_train_langs 
+            sys.exit(1)
+        mono_langs=list(parallel_train_langs[0])
+        parallel_valid_langs=parallel_train_langs
         test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
-    
+
+    if train_mode=='sup':
+        parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
+        if len(parallel_train_langs)>1:
+            print('Currently only one language pair is supported')
+            sys.exit(1)
+        parallel_valid_langs=parallel_train_langs
+        test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
+
     elif train_mode=='unsup':
         parallel_train_langs=[]
         mono_langs=args.langs.split(',')
-        if len(mono_langs)>2: 
+        if len(mono_langs)>2:
             print('Currently only one language pair is supported')
-            sys.exit(0)
+            sys.exit(1)
         parallel_valid_langs=[tuple(mono_langs)]
         test_langs =[ tuple(mono_langs),tuple(reversed(mono_langs))]
 
     print 'Parallel Train, Mono, Parallel Valid, Test Langs'
-    print parallel_train_langs 
+    print parallel_train_langs
     print mono_langs
-    print parallel_valid_langs 
-    print test_langs 
+    print parallel_valid_langs
+    print test_langs
 
     # Create output folders if required
     temp_model_output_dir = output_dir+'/temp_models/'
@@ -136,8 +149,8 @@ if __name__ == '__main__' :
         parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
 
-    ## complete vocabulary creation         
-    mapping.finalize_vocab()    
+    ## complete vocabulary creation
+    mapping.finalize_vocab()
 
     # Reading parallel Validation data
     parallel_valid_data = dict()
@@ -171,9 +184,9 @@ if __name__ == '__main__' :
 
     # Optimizers for training using monolingual data
     # Has only one optimizer which minimizes loss of sequence reconstruction
-    mono_optimizer = dict()
+    unsup_optimizer = dict()
     for lang in mono_langs:
-        mono_optimizer[lang] = model.get_mono_optimizer(learning_rate,lang,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
+        unsup_optimizer[lang] = model.get_mono_optimizer(learning_rate,lang,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
 
     # Optimizers for training using parallel data
     # For each language pair, there are 3 optimizers:
@@ -181,9 +194,9 @@ if __name__ == '__main__' :
     # 2. Minimize loss for transliterating second language to first
     # 3. Minimize difference between the hidden representations
 
-    parallel_optimizer = dict()
+    semisup_optimizer = dict()
     for lang1,lang2 in parallel_train_langs:
-        parallel_optimizer[(lang1,lang2)] = [
+        semisup_optimizer[(lang1,lang2)] = [
             model.get_parallel_optimizer(learning_rate,
                 lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
                 lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
@@ -194,17 +207,30 @@ if __name__ == '__main__' :
                 lang1,batch_sequences,batch_sequence_lengths,
                 lang2,batch_sequences_2,batch_sequence_lengths_2)]
 
+    sup_optimizer = dict()
+    for lang1,lang2 in parallel_train_langs:
+        sup_optimizer[(lang1,lang2)] = [
+            model.get_parallel_optimizer(learning_rate,
+                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+                ]
+
     # Finding validation sequence loss
     # For each pair of language, return sum of loss of transliteration one script to another and vice versa
     validation_seq_loss = dict()
     for lang_pair in parallel_valid_langs:
         lang1,lang2=lang_pair
-        validation_seq_loss[lang_pair] = model.seq_loss_2(
-                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
-            + model.seq_loss_2(
-                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
+        if train_mode in ['semisup','unsup']:
+            validation_seq_loss[lang_pair] = model.seq_loss_2(
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
+                + model.seq_loss_2(
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
+        elif train_mode in ['sup']:
+            validation_seq_loss[lang_pair] = model.seq_loss_2(
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2)
 
     # Predict output for test sequences
     infer_output = dict()
@@ -234,7 +260,7 @@ if __name__ == '__main__' :
 
     steps = 0
     validation_losses = []
-    
+
     # Whether to continue or now
     cont = True
 
@@ -246,23 +272,32 @@ if __name__ == '__main__' :
             if(type(opti_lang) is str):     # If it is a monolingual dataset, call optimizer
                 lang = opti_lang
                 sequences,sequence_masks,sequence_lengths = mono_train_data[lang].get_next_batch(batch_size)
-                sess.run(mono_optimizer[lang], feed_dict = {batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths})
+                sess.run(unsup_optimizer[lang], feed_dict = {batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths})
                 fractional_epochs[idx] += float(len(sequences))/mono_train_data[opti_lang].num_words
             else:                           # If it is a bilingual dataset, call corresponding optimizers
                 lang1 = opti_lang[0]
                 lang2 = opti_lang[1]
+
                 sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
-                sess.run(parallel_optimizer[opti_lang], feed_dict = {
-                    batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
-                    })
+
+                if train_mode=='semisup':
+                    sess.run(semisup_optimizer[opti_lang], feed_dict = {
+                        batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
+                        batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
+                        })
+                elif train_mode=='sup':
+                    sess.run(sup_optimizer[opti_lang], feed_dict = {
+                        batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
+                        batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
+                        })
+
                 fractional_epochs[idx] += float(len(sequences))/parallel_train_data[opti_lang].num_words
 
         # One more batch is processed
         steps+=1
         # If all datasets are used for training epoch is complete
         if(min(fractional_epochs) >= 1.0):
-            completed_epochs += 1 
+            completed_epochs += 1
             fractional_epochs = [0.0 for _ in mono_langs+parallel_train_langs]
 
             # Find validation loss
@@ -273,6 +308,7 @@ if __name__ == '__main__' :
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
                     batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
                     })
+                elif train_mode=='sup':
             validation_losses.append(validation_loss)
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Validation loss: "+str(validation_loss)
