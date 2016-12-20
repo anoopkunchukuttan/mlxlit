@@ -3,7 +3,7 @@ import codecs
 
 class ParallelDataReader():
         # Initializer and data reader
-        def __init__(self, lang1, lang2, filename1, filename2, mapping, max_sequence_length):
+        def __init__(self, lang1, lang2, filename1, filename2, mapping, max_sequence_length, train_size=-1):
                 # Taking args and storing as class vars
                 self.lang1 = lang1
                 self.lang2 = lang2

@@ -34,7 +34,12 @@ if __name__ == '__main__' :
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation and RNN')
     parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic" or "onehot"')
-    parser.add_argument('--train_mode', type = str, default = 'semisup', help = 'one of "semisup" for semi-supervised or "unsup" for unsupervised learning')
+
+    parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
+    parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
+    parser.add_argument('--use_monolingual', action = 'store_true' , default = False, help = 'Use additional monolingual data in addition to parallel training data for monolingual reconstruction. Applicable for supervised learning only')
+
+    parser.add_argument('--train_size', type = int, default = -1, help = 'Size of the parallel training set to use for all language pairs')
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
     parser.add_argument('--langs', type = str, default = None, help = 'List of language for unsupervised training given as: "lang1,lang2,lang3,lang4,..."')
 
@@ -58,22 +63,21 @@ if __name__ == '__main__' :
 
     embedding_size = args.embedding_size
     representation = args.representation
+
     train_mode = args.train_mode
+    train_bidirectional = args.train_bidirectional 
+    use_monolingual = args.use_monolingual 
+
     if train_mode=='unsup' and args.langs is None:
         print 'ERROR: --langs  has to be set for "unsup" mode'
         sys.exit(1)
-    elif train_mode=='semisup' and args.lang_pairs is None:
-        print 'ERROR: --lang_pairs has to be set for "semisup" mode'
-        sys.exit(1)
-    elif train_mode=='sup' and args.lang_pairs is None:
-        print 'ERROR: --lang_pairs has to be set for "sup" mode'
+    elif train_mode == 'sup' and args.lang_pairs is None:
+        print 'ERROR: --lang_pairs has to be set for "{}" mode'.format(train_mode)
         sys.exit(1)
     elif train_mode=='unsup' and args.lang_pairs is not None:
         print 'WARNING:--lang_pairs is not valid for "unsup" mode, ignoring parameter'
-    elif train_mode=='semisup' and args.langs is not None:
-        print 'WARNING:--langs is not valid for "semisup" mode, ignoring parameter'
-    elif train_mode=='sup' and args.langs is not None:
-        print 'WARNING:--langs is not valid for "sup" mode, ignoring parameter'
+    elif train_mode == 'sup' and args.langs is not None:
+        print 'WARNING:--langs is not valid for "{}" mode, ignoring parameter'.format(train_mode)
 
     data_dir = args.data_dir
     output_dir = args.output_dir #+'_e'+str(embedding_size)+'_b'+str(batch_size)+'_lr'+str(learning_rate)+'_'+str(calendar.timegm(time.gmtime()))
@@ -81,32 +85,50 @@ if __name__ == '__main__' :
     if start_from is not None:
         assert os.path.exists(start_from), "start_from: '"+ start_from +"'' file does not exist"
 
-
     # Setting the language parameters
     mono_langs=None
     parallel_train_langs=None
     parallel_valid_langs=None
     test_langs=None
 
-    ##NOTE: Supports only one language pair currently
-    if train_mode=='semisup':
-        parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
-        if len(parallel_train_langs)>1:
-            print('Currently only one language pair is supported')
-            sys.exit(1)
-        mono_langs=list(parallel_train_langs[0])
-        parallel_valid_langs=parallel_train_langs
-        test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
+    ###NOTE: Supports only one language pair currently
+    #if train_mode=='semisup':
+    #    parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
+    #    if len(parallel_train_langs)>1:
+    #        print('Currently only one language pair is supported')
+    #        sys.exit(1)
+    #    mono_langs=list(parallel_train_langs[0])
+    #    parallel_valid_langs=parallel_train_langs
+    #    test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
 
-    if train_mode=='sup':
-        parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
-        if len(parallel_train_langs)>1:
-            print('Currently only one language pair is supported')
-            sys.exit(1)
-        parallel_valid_langs=parallel_train_langs
-        test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
+    #elif train_mode=='sup':
+    #    parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
+    #    if len(parallel_train_langs)>1:
+    #        print('Currently only one language pair is supported')
+    #        sys.exit(1)
+    #    mono_langs=[]
+    #    parallel_valid_langs=parallel_train_langs
+    #    test_langs=[parallel_train_langs[0]]
 
-    elif train_mode=='unsup':
+    #elif train_mode=='bisup':
+    #    parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
+    #    if len(parallel_train_langs)>1:
+    #        print('Currently only one language pair is supported')
+    #        sys.exit(1)
+    #    mono_langs=[]
+    #    parallel_valid_langs=parallel_train_langs
+    #    test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
+
+    #elif train_mode=='unsup':
+    #    parallel_train_langs=[]
+    #    mono_langs=args.langs.split(',')
+    #    if len(mono_langs)>2:
+    #        print('Currently only one language pair is supported')
+    #        sys.exit(1)
+    #    parallel_valid_langs=[tuple(mono_langs)]
+    #    test_langs =[ tuple(mono_langs),tuple(reversed(mono_langs))]
+
+    if train_mode=='unsup':
         parallel_train_langs=[]
         mono_langs=args.langs.split(',')
         if len(mono_langs)>2:
@@ -114,6 +136,25 @@ if __name__ == '__main__' :
             sys.exit(1)
         parallel_valid_langs=[tuple(mono_langs)]
         test_langs =[ tuple(mono_langs),tuple(reversed(mono_langs))]
+
+    elif train_mode=='sup':
+
+        parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
+        parallel_valid_langs=parallel_train_langs
+
+        if len(parallel_train_langs)>1:
+            print('Currently only one language pair is supported')
+            sys.exit(1)
+
+        if use_monolingual:             
+            mono_langs=list(parallel_train_langs[0])
+        else:
+            mono_langs=[]
+
+        if train_bidirectional:             
+            test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
+        else: 
+            test_langs=[parallel_train_langs[0]]
 
     print 'Parallel Train, Mono, Parallel Valid, Test Langs'
     print parallel_train_langs
@@ -194,40 +235,90 @@ if __name__ == '__main__' :
     # 2. Minimize loss for transliterating second language to first
     # 3. Minimize difference between the hidden representations
 
-    semisup_optimizer = dict()
-    for lang1,lang2 in parallel_train_langs:
-        semisup_optimizer[(lang1,lang2)] = [
-            model.get_parallel_optimizer(learning_rate,
-                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
-            model.get_parallel_optimizer(learning_rate,
-                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
-            model.get_parallel_difference_optimizer(learning_rate,
-                lang1,batch_sequences,batch_sequence_lengths,
-                lang2,batch_sequences_2,batch_sequence_lengths_2)]
+    #semisup_optimizer = dict()
+    #for lang1,lang2 in parallel_train_langs:
+    #    semisup_optimizer[(lang1,lang2)] = [
+    #        model.get_parallel_optimizer(learning_rate,
+    #            lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+    #            lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+    #        model.get_parallel_optimizer(learning_rate,
+    #            lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
+    #            lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
+    #        model.get_parallel_difference_optimizer(learning_rate,
+    #            lang1,batch_sequences,batch_sequence_lengths,
+    #            lang2,batch_sequences_2,batch_sequence_lengths_2)]
+
+    #sup_optimizer = dict()
+    #for lang1,lang2 in parallel_train_langs:
+    #    sup_optimizer[(lang1,lang2)] = [
+    #        model.get_parallel_optimizer(learning_rate,
+    #            lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+    #            lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+    #            ]
+
+    #bisup_optimizer = dict()
+    #for lang1,lang2 in parallel_train_langs:
+    #    bisup_optimizer[(lang1,lang2)] = [
+    #        model.get_parallel_optimizer(learning_rate,
+    #            lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+    #            lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+    #        model.get_parallel_optimizer(learning_rate,
+    #            lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
+    #            lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
+    #        model.get_parallel_difference_optimizer(learning_rate,
+    #            lang1,batch_sequences,batch_sequence_lengths,
+    #            lang2,batch_sequences_2,batch_sequence_lengths_2)]
 
     sup_optimizer = dict()
     for lang1,lang2 in parallel_train_langs:
-        sup_optimizer[(lang1,lang2)] = [
-            model.get_parallel_optimizer(learning_rate,
-                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
-                ]
+
+        if train_bidirectional: 
+            sup_optimizer[(lang1,lang2)] = [
+                model.get_parallel_optimizer(learning_rate,
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+                model.get_parallel_optimizer(learning_rate,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
+                model.get_parallel_difference_optimizer(learning_rate,
+                    lang1,batch_sequences,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_lengths_2)]
+
+        else: 
+
+            sup_optimizer[(lang1,lang2)] = [
+                model.get_parallel_optimizer(learning_rate,
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+                    ]
 
     # Finding validation sequence loss
     # For each pair of language, return sum of loss of transliteration one script to another and vice versa
     validation_seq_loss = dict()
+    #for lang_pair in parallel_valid_langs:
+    #    lang1,lang2=lang_pair
+    #    if train_mode in ['semisup','unsup','bisup']:
+    #        validation_seq_loss[lang_pair] = model.seq_loss_2(
+    #                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+    #                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
+    #            + model.seq_loss_2(
+    #                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
+    #                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
+    #    elif train_mode in ['sup']:
+    #        validation_seq_loss[lang_pair] = model.seq_loss_2(
+    #                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+    #                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2)
+
     for lang_pair in parallel_valid_langs:
         lang1,lang2=lang_pair
-        if train_mode in ['semisup','unsup']:
+        if train_bidirectional or train_mode=='unsup':
             validation_seq_loss[lang_pair] = model.seq_loss_2(
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
                 + model.seq_loss_2(
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
-        elif train_mode in ['sup']:
+        else:
             validation_seq_loss[lang_pair] = model.seq_loss_2(
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2)
@@ -280,16 +371,10 @@ if __name__ == '__main__' :
 
                 sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
 
-                if train_mode=='semisup':
-                    sess.run(semisup_optimizer[opti_lang], feed_dict = {
-                        batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-                        batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
-                        })
-                elif train_mode=='sup':
-                    sess.run(sup_optimizer[opti_lang], feed_dict = {
-                        batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-                        batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
-                        })
+                sess.run(sup_optimizer[opti_lang], feed_dict = {
+                    batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
+                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
+                    })
 
                 fractional_epochs[idx] += float(len(sequences))/parallel_train_data[opti_lang].num_words
 
@@ -308,7 +393,6 @@ if __name__ == '__main__' :
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
                     batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
                     })
-                elif train_mode=='sup':
             validation_losses.append(validation_loss)
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Validation loss: "+str(validation_loss)
