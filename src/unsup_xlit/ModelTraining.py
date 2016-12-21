@@ -287,13 +287,22 @@ if __name__ == '__main__' :
             #        lang1,batch_sequences,batch_sequence_lengths,
             #        lang2,batch_sequences_2,batch_sequence_lengths_2)]
 
-            ### sum of all losses 
+            #### sum of all losses 
+            #sup_optimizer[(lang1,lang2)] = [
+            #    model.get_parallel_all_optimizer(learning_rate,
+            #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+            #        ]
+
+            ### optimize separately: (i) sum of translation losses (ii) representation loss
             sup_optimizer[(lang1,lang2)] = [
-                model.get_parallel_all_optimizer(learning_rate,
+                model.get_parallel_bi_optimizer(learning_rate,
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
-                    ]
-
+                model.get_parallel_difference_optimizer(learning_rate,
+                    lang1,batch_sequences,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_lengths_2),
+                   ]
         else: 
 
             sup_optimizer[(lang1,lang2)] = [
