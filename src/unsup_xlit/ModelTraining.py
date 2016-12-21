@@ -214,16 +214,16 @@ if __name__ == '__main__' :
 
             ## (a) each loss optimized separately 
 
-            #sup_optimizer[(lang1,lang2)] = [
-            #    model.get_parallel_optimizer(learning_rate,
-            #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
-            #    model.get_parallel_optimizer(learning_rate,
-            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-            #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
-            #    model.get_parallel_difference_optimizer(learning_rate,
-            #        lang1,batch_sequences,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_lengths_2)]
+            sup_optimizer[(lang1,lang2)] = [
+                model.get_parallel_optimizer(learning_rate,
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+                model.get_parallel_optimizer(learning_rate,
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
+                model.get_parallel_difference_optimizer(learning_rate,
+                    lang1,batch_sequences,batch_sequence_lengths,
+                    lang2,batch_sequences_2,batch_sequence_lengths_2)]
 
             #### (b) sum of all losses 
             #sup_optimizer[(lang1,lang2)] = [
@@ -232,15 +232,15 @@ if __name__ == '__main__' :
             #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
             #        ]
 
-            ### (c) optimize separately: (i) sum of translation losses (ii) representation loss
-            sup_optimizer[(lang1,lang2)] = [
-                model.get_parallel_bi_optimizer(learning_rate,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
-                model.get_parallel_difference_optimizer(learning_rate,
-                    lang1,batch_sequences,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_lengths_2),
-                   ]
+            #### (c) optimize separately: (i) sum of translation losses (ii) representation loss
+            #sup_optimizer[(lang1,lang2)] = [
+            #    model.get_parallel_bi_optimizer(learning_rate,
+            #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+            #    model.get_parallel_difference_optimizer(learning_rate,
+            #        lang1,batch_sequences,batch_sequence_lengths,
+            #        lang2,batch_sequences_2,batch_sequence_lengths_2),
+            #       ]
         else: 
 
             sup_optimizer[(lang1,lang2)] = [
