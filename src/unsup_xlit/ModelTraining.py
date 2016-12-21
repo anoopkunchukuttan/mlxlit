@@ -38,6 +38,7 @@ if __name__ == '__main__' :
     parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
     parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
     parser.add_argument('--use_monolingual', action = 'store_true' , default = False, help = 'Use additional monolingual data in addition to parallel training data for monolingual reconstruction. Applicable for supervised learning only')
+    parser.add_argument('--which_mono', type = int, default = 0, help = 'which monolingual to use (hack code)')
 
     parser.add_argument('--train_size', type = int, default = -1, help = 'Size of the parallel training set to use for all language pairs')
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
@@ -112,7 +113,10 @@ if __name__ == '__main__' :
             sys.exit(1)
 
         if use_monolingual:             
-            mono_langs=list(parallel_train_langs[0])
+            #mono_langs=list(parallel_train_langs[0])
+
+            ## NOTE: temporary - use only source for monolingual optimization 
+            mono_langs=[parallel_train_langs[0][args.which_mono]]
         else:
             mono_langs=[]
 
