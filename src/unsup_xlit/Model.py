@@ -147,6 +147,33 @@ class Model():
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(mean_squared_difference)
         return optimizer
 
+
+    # Optimizer to 
+    #   minimize L12 + L21 + D
+    # where, 
+    #   L12 =  (lang1->lang2 negative log likelihood)
+    #   L21 =  (lang2->lang1 negative log likelihood)
+    #     D =  mean squared differences of hidden representation of same word from different languages
+
+    def get_parallel_all_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2):
+        hidden_representation1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
+        hidden_representation2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+
+        # L12
+        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1)
+
+        # L21
+        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2)
+
+        # D
+        squared_difference = tf.squared_difference(hidden_representation1,hidden_representation2)
+        mean_squared_difference = tf.reduce_mean(squared_difference)
+
+        total_loss=loss12+loss21+mean_squared_difference
+
+        optimizer = tf.train.AdamOptimizer(learning_rate).minimize(total_loss)
+        return optimizer
+
     # Given source sequences, and target language, predict character ids sequences in target_lang
     # Explanation same as that of seq_loss
     # Output is tensorflow op
