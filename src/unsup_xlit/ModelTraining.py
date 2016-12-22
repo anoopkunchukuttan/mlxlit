@@ -8,6 +8,7 @@ import Mapping
 import MonoDataReader
 import ParallelDataReader
 
+import itertools as it
 import tensorflow as tf
 import numpy as np
 
@@ -38,9 +39,9 @@ if __name__ == '__main__' :
     parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
     parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
     parser.add_argument('--use_monolingual', action = 'store_true' , default = False, help = 'Use additional monolingual data in addition to parallel training data for monolingual reconstruction. Applicable for supervised learning only')
-    parser.add_argument('--which_mono', type = int, default = 0, help = 'which monolingual to use (hack code)')
+    parser.add_argument('--which_mono', type = int, default = -100, help = 'which monolingual to use (hack code, may not work - must be commented)')
 
-    parser.add_argument('--train_size', type = int, default = -1, help = 'Size of the parallel training set to use for all language pairs')
+    parser.add_argument('--train_size', type = int, default = -1, help = 'Size of the parallel training set to use for all language pairs (not implemented yet)')
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
     parser.add_argument('--langs', type = str, default = None, help = 'List of language for unsupervised training given as: "lang1,lang2,lang3,lang4,..."')
 
@@ -92,38 +93,33 @@ if __name__ == '__main__' :
     parallel_valid_langs=None
     test_langs=None
 
-    ###NOTE: Supports only one language pair currently
 
     if train_mode=='unsup':
         parallel_train_langs=[]
         mono_langs=args.langs.split(',')
-        if len(mono_langs)>2:
-            print('Currently only one language pair is supported')
-            sys.exit(1)
-        parallel_valid_langs=[tuple(mono_langs)]
-        test_langs =[ tuple(mono_langs),tuple(reversed(mono_langs))]
+        parallel_valid_langs=list(it.combinations(mono_langs,2))
+        test_langs = list(it.permutations(mono_langs,2))
 
     elif train_mode=='sup':
 
         parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
         parallel_valid_langs=parallel_train_langs
 
-        if len(parallel_train_langs)>1:
-            print('Currently only one language pair is supported')
-            sys.exit(1)
-
         if use_monolingual:             
-            #mono_langs=list(parallel_train_langs[0])
+            mll=set()
+            for lp in [list(x) for x in parallel_train_langs]: 
+                mll.update(lp)
+            mono_langs=list(mll)                
 
-            ## NOTE: temporary - use only source for monolingual optimization 
-            mono_langs=[parallel_train_langs[0][args.which_mono]]
+            ### NOTE: temporary - use only source for monolingual optimization (works only for a single pair)
+            #mono_langs=[parallel_train_langs[0][args.which_mono]]
         else:
             mono_langs=[]
 
         if train_bidirectional:             
-            test_langs=[parallel_train_langs[0],tuple(reversed(parallel_train_langs[0]))]
+            test_langs= parallel_train_langs + [ tuple(reversed(x)) for x in parallel_train_langs ]
         else: 
-            test_langs=[parallel_train_langs[0]]
+            test_langs=parallel_train_langs 
 
     print 'Parallel Train, Mono, Parallel Valid, Test Langs'
     print parallel_train_langs
@@ -259,7 +255,9 @@ if __name__ == '__main__' :
 
     for lang_pair in parallel_valid_langs:
         lang1,lang2=lang_pair
-        if train_bidirectional or train_mode=='unsup':
+
+        ## TODO: see if the 'unsup condition is required'
+        if (train_mode=='sup' and train_bidirectional) or train_mode=='unsup':
             validation_seq_loss[lang_pair] = model.seq_loss_2(
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
