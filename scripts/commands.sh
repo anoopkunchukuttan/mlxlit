@@ -5,7 +5,7 @@ export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 #####################################################
 #################### LANGUAGE MODEL ################
@@ -126,68 +126,108 @@ data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/co
 ref_dir=~/experiments/unsupervised_transliterator/data/nonparallel/pb
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16
 
-expname='2_bisup_nomono'
-train_bidirectional='--train_bidirectional'
+#expname='5_sup_nomono'
+##train_bidirectional='--train_bidirectional'
+##use_monolingual='--use_monolingual'
+
+#expname='2_bisup_nomono_again'
+#train_bidirectional='--train_bidirectional'
+##use_monolingual='--use_monolingual'
+
+#expname='3_sup_mono'
+##train_bidirectional='--train_bidirectional'
 #use_monolingual='--use_monolingual'
 
-#for langpair in `echo hi-kn bn-hi ta-kn`
-for langpair in `echo hi-kn`
-do
-    src_lang=`echo $langpair | cut -f 1 -d '-'`
-    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#expname='4_bisup_mono'
+#train_bidirectional='--train_bidirectional'
+#use_monolingual='--use_monolingual'
 
-    #for representation in `echo onehot phonetic`
-    for representation in `echo onehot`
-    do 
-        o=$output_dir/$expname/$representation/$langpair
-        
-        rm -rf $o
-        mkdir -p $o
+### XXXXXXX NOTE: remove temporary option for use of single language for monolingual 
 
-        echo 'Start: ' $expname $langpair $representation 
+#for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono `
+for expname in `echo 3_3_use_src`
+do 
 
-        ## Training and Testing 
-        python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
-            --train_mode sup \
-            $train_bidirectional \
-            $use_monolingual \
-            --lang_pairs "$src_lang-$tgt_lang" \
-            --data_dir  $data_dir/$langpair \
-            --output_dir  $o \
-            --representation $representation > $o/train.log 2>&1 
+    exptype=`echo $expname | cut -f 1 -d '_'`
 
-        ### Evaluation starts 
+    ######### choose specific model  ############
 
-        #prefix=`ls $o/outputs/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
+    if [ $exptype = '1' ]  # sup_nomono
+    then 
+        train_bidirectional=''
+        use_monolingual=''
+    elif [ $exptype = '2' ] # bisup_nomono 
+    then 
+        train_bidirectional='--train_bidirectional'
+        use_monolingual=''
+    elif [ $exptype = '3' ] # sup_mono 
+    then 
+        train_bidirectional=''
+        use_monolingual='--use_monolingual --which_mono 0'
+    elif [ $exptype = '4' ] # bisup_mono
+    then 
+        train_bidirectional='--train_bidirectional'
+        use_monolingual='--use_monolingual'
+    fi 
+   
+    ######## Experiment loop starts here ########
 
-        ### convert to required format 
-        #python utilities.py convert_output_format  \
-        #    $o/outputs/${prefix}${src_lang}-${tgt_lang}_ \
-        #    $o/outputs/${prefix}test.${tgt_lang} 
+    #for langpair in `echo hi-kn bn-hi ta-kn`
+    for langpair in `echo bn-hi ta-kn`
+    do
+        src_lang=`echo $langpair | cut -f 1 -d '-'`
+        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+    
+        for representation in `echo onehot phonetic`
+        do 
+            o=$output_dir/$expname/$representation/$langpair
+            
+            echo 'Start: ' $expname $langpair $representation 
+    
+            ## Training and Testing 
+            rm -rf $o
+            mkdir -p $o
+            python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
+                --train_mode sup \
+                $train_bidirectional \
+                $use_monolingual \
+                --lang_pairs "$src_lang-$tgt_lang" \
+                --data_dir  $data_dir/$langpair \
+                --output_dir  $o \
+                --representation $representation > $o/train.log 2>&1 
+    
+            ### Evaluation starts 
+    
+            prefix=`ls $o/outputs/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
+    
+            ## convert to required format 
+            python utilities.py convert_output_format  \
+                $o/outputs/${prefix}${src_lang}-${tgt_lang}_ \
+                $o/outputs/${prefix}test.${tgt_lang} 
+    
+            # convert to n-best format 
+            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
+                $o/outputs/${prefix}test.${tgt_lang}  $o/outputs/${prefix}test.nbest.${tgt_lang}
+            
+            # generate NEWS 2015 evaluation format output file 
+            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+                    "$ref_dir/$src_lang-$tgt_lang/test.id" \
+                    "$ref_dir/$src_lang-$tgt_lang/test.xml" \
+                    "$o/outputs/${prefix}test.nbest.${tgt_lang}" \
+                    "$o/outputs/${prefix}test.nbest.${tgt_lang}.xml" \
+                    "system" "conll2016" "$src_lang" "$tgt_lang"  
+            
+            # run evaluation 
+            python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+                    -t "$ref_dir/$src_lang-$tgt_lang/test.xml" \
+                    -i "$o/outputs/${prefix}test.nbest.${tgt_lang}.xml" \
+                    -o "$o/outputs/${prefix}test.nbest.${tgt_lang}.detaileval.csv" \
+                    > "$o/outputs/${prefix}test.nbest.${tgt_lang}.eval"
+    
+            echo 'End: ' $expname $langpair $representation 
+    
+        done 
+    done     
 
-        ## convert to n-best format 
-        #python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
-        #    $o/outputs/${prefix}test.${tgt_lang}  $o/outputs/${prefix}test.nbest.${tgt_lang}
-        #
-        ## generate NEWS 2015 evaluation format output file 
-        #python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-        #        "$ref_dir/$src_lang-$tgt_lang/test.id" \
-        #        "$ref_dir/$src_lang-$tgt_lang/test.xml" \
-        #        "$o/outputs/${prefix}test.nbest.${tgt_lang}" \
-        #        "$o/outputs/${prefix}test.nbest.${tgt_lang}.xml" \
-        #        "system" "conll2016" "$src_lang" "$tgt_lang"  
-        #
-        ## run evaluation 
-        #python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-        #        -t "$ref_dir/$src_lang-$tgt_lang/test.xml" \
-        #        -i "$o/outputs/${prefix}test.nbest.${tgt_lang}.xml" \
-        #        -o "$o/outputs/${prefix}test.nbest.${tgt_lang}.detaileval.csv" \
-        #        > "$o/outputs/${prefix}test.nbest.${tgt_lang}.eval"
 
-        echo 'End: ' $expname $langpair $representation 
-
-    done 
-done     
-
-
-
+done 
