@@ -5,7 +5,7 @@ export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 #####################################################
 #################### LANGUAGE MODEL ################
@@ -126,26 +126,8 @@ data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/co
 ref_dir=~/experiments/unsupervised_transliterator/data/nonparallel/pb
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16
 
-#expname='5_sup_nomono'
-##train_bidirectional='--train_bidirectional'
-##use_monolingual='--use_monolingual'
-
-#expname='2_bisup_nomono_again'
-#train_bidirectional='--train_bidirectional'
-##use_monolingual='--use_monolingual'
-
-#expname='3_sup_mono'
-##train_bidirectional='--train_bidirectional'
-#use_monolingual='--use_monolingual'
-
-#expname='4_bisup_mono'
-#train_bidirectional='--train_bidirectional'
-#use_monolingual='--use_monolingual'
-
-### XXXXXXX NOTE: remove temporary option for use of single language for monolingual 
-
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono `
-for expname in `echo 3_3_use_src`
+for expname in `echo 3_sup_mono 4_bisup_mono `
 do 
 
     exptype=`echo $expname | cut -f 1 -d '_'`
@@ -163,7 +145,7 @@ do
     elif [ $exptype = '3' ] # sup_mono 
     then 
         train_bidirectional=''
-        use_monolingual='--use_monolingual --which_mono 0'
+        use_monolingual='--use_monolingual'
     elif [ $exptype = '4' ] # bisup_mono
     then 
         train_bidirectional='--train_bidirectional'
@@ -172,8 +154,7 @@ do
    
     ######## Experiment loop starts here ########
 
-    #for langpair in `echo hi-kn bn-hi ta-kn`
-    for langpair in `echo bn-hi ta-kn`
+    for langpair in `echo hi-kn bn-hi ta-kn`
     do
         src_lang=`echo $langpair | cut -f 1 -d '-'`
         tgt_lang=`echo $langpair | cut -f 2 -d '-'`
