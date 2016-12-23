@@ -59,12 +59,12 @@ class Model():
         x = tf.transpose(tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b),[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x)
-        _, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
 
-        return states
+        return states, enc_outputs
 
     # Find cross entropy loss in predicting target_sequences from computed hidden representation (intial state)
-    def seq_loss(self, target_sequence, target_masks, lang, initial_state):
+    def seq_loss(self, target_sequence, target_masks, lang, initial_state, enc_output):
         state = initial_state
         loss = 0.0
         cell = self.decoder_cell[lang]
@@ -113,16 +113,16 @@ class Model():
     #    sequences, sequence masks: tensors of shape: [batch_size, max_sequence lengths]
     #    sequence_lengths: tensor of shape: [batch_sizes]
     def seq_loss_2(self,lang1,sequences,sequence_masks,sequence_lengths,lang2,target_sequences,target_sequence_masks,target_sequence_lengths):
-        hidden_representation = self.compute_hidden_representation(sequences,sequence_lengths,lang1)
-        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation)
+        hidden_representation, enc_output = self.compute_hidden_representation(sequences,sequence_lengths,lang1)
+        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation,enc_output)
         return loss
 
     # Get a monolingual optimizer for 'lang' language
     # sequences, sequence masks: tensors of shape: [batch_size, max_sequence lengths]
     # sequence_lengths: tensor of shape: [batch_sizes]
     def get_mono_optimizer(self,learning_rate,lang,sequences,sequence_masks,sequence_lengths):
-        hidden_representation = self.compute_hidden_representation(sequences,sequence_lengths,lang)
-        loss = self.seq_loss(sequences,sequence_masks,lang,hidden_representation)
+        hidden_representation, enc_output =  self.compute_hidden_representation(sequences,sequence_lengths,lang)
+        loss = self.seq_loss(sequences,sequence_masks,lang,hidden_representation,enc_output)
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return optimizer
 
@@ -130,16 +130,16 @@ class Model():
     # sequences, sequence masks: tensors of shape: [batch_size, max_sequence lengths]
     # sequence_lengths: tensor of shape: [batch_sizes]
     def get_parallel_optimizer(self,learning_rate,lang1,sequences,sequence_masks,sequence_lengths,lang2,target_sequences,target_sequence_masks,target_sequence_lengths):
-        hidden_representation = self.compute_hidden_representation(sequences,sequence_lengths,lang1)
-        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation)
+        hidden_representation, enc_output = self.compute_hidden_representation(sequences,sequence_lengths,lang1)
+        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation,enc_output)
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return optimizer
 
     # Optimizer to minimize mean squared differences of hidden representation of same word from different languages
     # (mean taken over all batch_size x embedding_size elements)
     def get_parallel_difference_optimizer(self,learning_rate,lang1,sequences1,sequence_lengths1,lang2,sequences2,sequence_lengths2):
-        hidden_representation1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
-        hidden_representation2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
+        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
 
         squared_difference = tf.squared_difference(hidden_representation1,hidden_representation2)
         mean_squared_difference = tf.reduce_mean(squared_difference)
@@ -154,14 +154,14 @@ class Model():
     #   L21 =  (lang2->lang1 negative log likelihood)
 
     def get_parallel_bi_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2):
-        hidden_representation1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
-        hidden_representation2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
+        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
 
         # L12
-        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1)
+        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1, enc_output1)
 
         # L21
-        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2)
+        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2, enc_output2)
 
         total_loss=loss12+loss21
 
@@ -176,14 +176,14 @@ class Model():
     #     D =  mean squared differences of hidden representation of same word from different languages
 
     def get_parallel_all_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2):
-        hidden_representation1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
-        hidden_representation2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
+        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
 
         # L12
-        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1)
+        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1, enc_output1)
 
         # L21
-        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2)
+        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2, enc_output2)
 
         # D
         squared_difference = tf.squared_difference(hidden_representation1,hidden_representation2)
@@ -198,7 +198,7 @@ class Model():
     # Explanation same as that of seq_loss
     # Output is tensorflow op
     def transliterate(self, source_lang, sequences, sequence_lengths, target_lang):
-        initial_state = self.compute_hidden_representation(sequences,sequence_lengths, source_lang)
+        initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang)
         state = initial_state
         outputs=[]
         batch_size = tf.shape(sequences)[0]
