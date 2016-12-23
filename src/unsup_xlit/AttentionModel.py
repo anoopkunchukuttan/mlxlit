@@ -9,9 +9,10 @@ from tensorflow.python.ops import rnn, rnn_cell
 # Do something with output folder
 class Model():
     def __init__(self,mapping,representation,embedding_size,max_sequence_length):
+        ## FIXME: need better variable initialziations,  reproducible of results 
         self.embedding_size = embedding_size
         self.mapping = mapping
-        rnn_size = embedding_size
+        rnn_size = embedding_size ## FIXME: embedding size and RNN size are the same, would be good to test with different ones 
         self.rnn_size = rnn_size
         self.max_sequence_length = max_sequence_length
         self.representation=representation
@@ -39,9 +40,10 @@ class Model():
         #lstm= rnn_cell.BasicLSTMCell(rnn_size)
         #self.encoder_cell = rnn_cell.MultiRNNCell([lstm] * number_enc_layers)
 
+        ## FIXME: This must not be a variable to be optimized
         self.decoder_input = dict()
         for lang in self.lang_list:
-            self.decoder_input[lang] = tf.Variable(tf.random_uniform([1, embedding_size], dtype = tf.float32))
+            self.decoder_input[lang] = tf.Variable(tf.random_uniform([1, embedding_size+rnn_size], dtype = tf.float32))
 
         self.decoder_cell = dict()
         for lang in self.lang_list:
@@ -52,7 +54,16 @@ class Model():
         self.out_b = dict()
         for lang in self.lang_list:
             self.out_W[lang] = tf.Variable(tf.random_uniform([self.rnn_size,self.vocab_size], -1*max_val, max_val))
-            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]))
+            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size])) ## FIXME: zero initialization seems odd
+
+        ## Attention Neural Network 
+        self.attn_W = tf.Variable(tf.random_uniform([self.decoder_cell[0].state_size+self.embedding_size+self.rnn_size,1], 
+            -1*max_val, max_val), name = 'attn_W')
+        self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')  ## FIXME: zero initialization seems odd
+
+        ## Initial state for the decoder (randomly initialized)
+        self.initial_dec_state=tf.Variable(tf.random_uniform([self.decoder_cell[0].state_size,1], dtype = tf.float32))
+
 
     # Given sequences of char_ids, compute hidden representation of each sequence
     def compute_hidden_representation(self, sequences, sequence_lengths, lang):
@@ -63,12 +74,57 @@ class Model():
 
         return states, enc_outputs
 
+    def compute_attention_context(self,prev_state,prev_out_embed,enc_outputs): 
+
+        batch_size=tf.shape(prev_state)[0]
+
+        ## getting prev_state and prev_out_embed in the correct shape
+        ## and duplicate them for cacatenating with enc_outputs 
+        att_ref=tf.concat(1,[prev_state,prev_out_embed])
+        a1=tf.tile(att_ref,[1,self.max_sequence_length])
+        a2=tf.reshape(a1,[-1,self.max_sequence_length])
+
+        ## reshaping and transposing enc_outputs 
+        a3=tf.pack(enc_outputs)
+        a4=tf.transpose(a3,[1,0,2])
+        a5=tf.reshape(a4,[-1,self.encoder_cell.output_size])
+        a12=tf.unpack(a4)  ## organized as list, one for each input in batch (used later)
+
+        ## preparing the input to the attention network
+        a6=tf.concat(1,[a2,a5])
+
+        ###### Passing through attention network
+        ## The network takes input for one encoder input and the current decoder state and output embedding and gives a scalar output
+        ## for all encoder vectors, at current decoder position, for the entire batch)
+
+        a7=tf.matmul(a6,self.attn_W)+self.attn_b
+        a8=tf.nn.tanh(a7)
+        a9=tf.reshape(a8,[-1,self.max_sequence_length])
+
+        ## apply softmax to compute the weights for the encoder outputs 
+        a10=tf.nn.softmax(a9)
+        a11=tf.unpack(a10)
+
+        assert len(a11)==batch_size 
+        assert len(a12)==batch_size 
+
+        a13=[]
+        for i  in range(batch_size): 
+            a13.append(tf.matmul(a11[i],a12[i]))
+
+        a14=tf.pack(a13)
+
+        return a14
+
     # Find cross entropy loss in predicting target_sequences from computed hidden representation (intial state)
     def seq_loss(self, target_sequence, target_masks, lang, initial_state, enc_output):
-        state = initial_state
+
+        batch_size = tf.shape(target_sequence)[0]
+
+        #state = initial_state  ## FIXME: this may no longer be possible 
+        state = tf.tile(self.initial_dec_state,[batch_size,1])  
         loss = 0.0
         cell = self.decoder_cell[lang]
-        batch_size = tf.shape(target_sequence)[0]
 
         # One step generate one character for each sequence
         for i in range(self.max_sequence_length):
@@ -77,12 +133,16 @@ class Model():
             if(i==0):
                 current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.pack([batch_size,1])),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b
+                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b  ##FIXME: why is this addition needed
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
+            ### compute the context vector using the attention mechanism                
+            context=self.compute_attention_context(state,current_emb,enc_output)
+            current_input=tf.concat(1,[current_emb,context])
+
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
-            output, state = cell(current_emb,state)
+            output, state = cell(current_input,state)
 
             # Generating one-hot labels for target_sequences
             labels = tf.expand_dims(target_sequence[:,i],1)
