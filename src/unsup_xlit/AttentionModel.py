@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
 
 # Do something with output folder
-class Model():
+class AttentionModel():
     def __init__(self,mapping,representation,embedding_size,max_sequence_length):
         ## FIXME: need better variable initialziations,  reproducible of results 
         self.embedding_size = embedding_size
