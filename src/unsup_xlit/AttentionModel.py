@@ -58,14 +58,13 @@ class AttentionModel():
         for lang in self.lang_list:
             self.out_W[lang] = tf.Variable(tf.random_uniform([self.rnn_size,self.vocab_size], -1*max_val, max_val),
                                             name='out_W_{}'.format(lang))
-            ## FIXME: (i) zero initialization seems odd 
             self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]), 
                                             name='out_b_{}'.format(lang))
 
         ## Attention Neural Network 
         self.attn_W = tf.Variable(tf.random_uniform([self.dec_state_size+self.embedding_size+self.rnn_size,1], 
             -1*max_val, max_val), name = 'attn_W')
-        self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')  ## FIXME: zero initialization seems odd
+        self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')  
 
         ## Initial state for the decoder (randomly initialized): FIXME: is there a better way
         self.initial_dec_state=tf.random_uniform([1,self.dec_state_size], dtype = tf.float32)
@@ -169,8 +168,8 @@ class AttentionModel():
 
         batch_size = tf.shape(target_sequence)[0]
 
-        #state = initial_state  ## FIXME: this may no longer be possible 
-        state = tf.reshape(tf.tile(self.initial_dec_state,[batch_size,1]),[-1,self.dec_state_size])
+        state = initial_state  ## FIXME: this may no longer be possible 
+        #state = tf.reshape(tf.tile(self.initial_dec_state,[batch_size,1]),[-1,self.dec_state_size])
 
         loss = 0.0
         cell = self.decoder_cell[lang]
@@ -187,8 +186,9 @@ class AttentionModel():
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism                
-            context=self.compute_attention_context(state,current_emb,enc_output)
-            current_input=tf.concat(1,[current_emb,context])
+            #context=self.compute_attention_context(state,current_emb,enc_output)
+            #current_input=tf.concat(1,[current_emb,context])
+            current_input=current_emb
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -313,8 +313,8 @@ class AttentionModel():
 
         batch_size = tf.shape(sequences)[0]
         initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang)
-        #state = initial_state  ## FIXME: this may no longer be possible 
-        state = tf.reshape(tf.tile(self.initial_dec_state,[batch_size,1]),[-1,self.dec_state_size])
+        state = initial_state  ## FIXME: this may no longer be possible 
+        #state = tf.reshape(tf.tile(self.initial_dec_state,[batch_size,1]),[-1,self.dec_state_size])
         outputs=[]
 
         for i in range(self.max_sequence_length):
@@ -326,8 +326,9 @@ class AttentionModel():
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism                
-            context=self.compute_attention_context(state,current_emb,enc_output)
-            current_input=tf.concat(1,[current_emb,context])
+            #context=self.compute_attention_context(state,current_emb,enc_output)
+            #current_input=tf.concat(1,[current_emb,context])
+            current_input=current_emb
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
