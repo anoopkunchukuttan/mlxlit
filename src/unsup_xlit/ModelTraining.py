@@ -4,6 +4,7 @@ import sys
 import codecs
 
 import Model
+import AttentionModel
 import Mapping
 import MonoDataReader
 import ParallelDataReader
@@ -131,6 +132,7 @@ if __name__ == '__main__' :
     temp_model_output_dir = output_dir+'/temp_models/'
     outputs_dir = output_dir+'/outputs/'
     final_output_dir = output_dir+'/final_output/'
+    log_dir = output_dir+'/log/'
 
     for folder in [temp_model_output_dir, outputs_dir, final_output_dir]:
         if not os.path.exists(folder):
@@ -177,9 +179,9 @@ if __name__ == '__main__' :
     ###################################################################
 
     # Creating Model object
-    model = Model.Model(mapping,representation,embedding_size,max_sequence_length) # Pass parameters
+    model = AttentionModel.AttentionModel(mapping,representation,embedding_size,max_sequence_length) # Pass parameters
 
-    # Creating placeholder for sequences, masks and lengths
+    ## Creating placeholder for sequences, masks and lengths
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
     batch_sequence_masks = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
     batch_sequence_lengths = tf.placeholder(shape=[None],dtype=tf.float32)
@@ -292,6 +294,8 @@ if __name__ == '__main__' :
     sess.run(tf.initialize_all_variables())
     if(start_from is not None):
         saver.restore(sess,start_from)
+    
+    tf.train.SummaryWriter(log_dir,sess.graph)
 
     print "Session started"
 
@@ -316,7 +320,7 @@ if __name__ == '__main__' :
                 lang2 = opti_lang[1]
 
                 sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
-
+                
                 sess.run(sup_optimizer[opti_lang], feed_dict = {
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
                     batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
