@@ -186,9 +186,9 @@ class AttentionModel():
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism                
-            #context=self.compute_attention_context(state,current_emb,enc_output)
-            #current_input=tf.concat(1,[current_emb,context])
-            current_input=current_emb
+            context=self.compute_attention_context(state,current_emb,enc_output)
+            current_input=tf.concat(1,[current_emb,context])
+            #current_input=current_emb
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -326,9 +326,9 @@ class AttentionModel():
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism                
-            #context=self.compute_attention_context(state,current_emb,enc_output)
-            #current_input=tf.concat(1,[current_emb,context])
-            current_input=current_emb
+            context=self.compute_attention_context(state,current_emb,enc_output)
+            current_input=tf.concat(1,[current_emb,context])
+            #current_input=current_emb
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
