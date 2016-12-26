@@ -35,7 +35,8 @@ class AttentionModel():
         self.embed_b = tf.Variable(tf.constant(0., shape=[embedding_size]), name = 'embed_b')
 
         # Creating BasicLSTM Cells and initial inputs to decoders
-        self.encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+        self.encoder_cell    = rnn_cell.BasicLSTMCell(rnn_size)
+        self.bk_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
         #number_enc_layers=2
         #lstm= rnn_cell.BasicLSTMCell(rnn_size)
         #self.encoder_cell = rnn_cell.MultiRNNCell([lstm] * number_enc_layers)
@@ -76,7 +77,7 @@ class AttentionModel():
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
         #enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
-        enc_outputs, states, _ = rnn.bidirectional_rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        enc_outputs, states, _ = rnn.bidirectional_rnn(self.encoder_cell, self.bk_encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
 
         return states, enc_outputs
 
@@ -159,7 +160,7 @@ class AttentionModel():
             a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
             return tf.matmul(a11,a12)
 
-        a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32) 
+        a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32,parallel_iterations=100) 
         a14=tf.squeeze(a13,[1])
 
         print 'end building attention context graph'
