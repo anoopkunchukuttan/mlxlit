@@ -61,21 +61,22 @@ class AttentionModel():
             self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]), 
                                             name='out_b_{}'.format(lang))
 
+        ## Attention mechanism paramters         
+        ## size of the context vector (will be twice encoder cell output size for bidirectional RNN)
+        self.ctxvec_size=2*self.rnn_size 
+
         ## Attention Neural Network 
-        self.attn_W = tf.Variable(tf.random_uniform([self.dec_state_size+self.embedding_size+self.rnn_size,1], 
+        self.attn_W = tf.Variable(tf.random_uniform([self.dec_state_size+self.embedding_size+self.ctxvec_size,1], 
             -1*max_val, max_val), name = 'attn_W')
         self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')  
-
-        ## Initial state for the decoder (randomly initialized): FIXME: is there a better way
-        self.initial_dec_state=tf.random_uniform([1,self.dec_state_size], dtype = tf.float32)
-
 
     # Given sequences of char_ids, compute hidden representation of each sequence
     def compute_hidden_representation(self, sequences, sequence_lengths, lang):
         x = tf.transpose(tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b),[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
-        enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        #enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        enc_outputs, states, _ = rnn.bidirectional_rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
 
         return states, enc_outputs
 
@@ -83,6 +84,7 @@ class AttentionModel():
 
         print 'start building attention context graph'
         batch_size=tf.shape(prev_state)[0]
+
 
         ## getting prev_state and prev_out_embed in the correct shape
         ## and duplicate them for cacatenating with enc_outputs 
@@ -93,7 +95,7 @@ class AttentionModel():
         ## reshaping and transposing enc_outputs 
         a3=tf.pack(enc_outputs)
         a4=tf.transpose(a3,[1,0,2])
-        a5=tf.reshape(a4,[-1,self.encoder_cell.output_size],name='attn__a5__enc_outputs_shaped')
+        a5=tf.reshape(a4,[-1,self.ctxvec_size],name='attn__a5__enc_outputs_shaped')
 
         ## preparing the input to the attention network
         a6=tf.concat(1,[a2,a5],name='attn__a6__network_input')
@@ -123,7 +125,7 @@ class AttentionModel():
         #a13=[]
         #def loop_func(batch_no): 
         #    a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])    
-        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.encoder_cell.output_size])    
+        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
         #    a13.append(tf.matmul(a11,a12,name='attn__a13__{}__ctx_weighting'.format(batch_no)))
         #    return tf.add(batch_no,1)
 
@@ -136,13 +138,13 @@ class AttentionModel():
         ###### (c)
         #def loop_func(batch_no,_): 
         #    a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])    
-        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.encoder_cell.output_size])    
+        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
         #    c=tf.matmul(a11,a12,name='attn__a13__{}__ctx_weighting'.format(batch_no))
         #    return (tf.add(batch_no,1),c)
 
         #cond=lambda bno, _:tf.less(bno,batch_size) ## FIXME: hardcoding
         #bno=tf.constant(0)
-        #ctxv=tf.random_uniform((1,self.encoder_cell.output_size))
+        #ctxv=tf.random_uniform((1,self.ctxvec_size))
 
         #results=tf.while_loop(cond,loop_func,[bno,ctxv])
         #[ x[1] for x in results ]
@@ -154,10 +156,10 @@ class AttentionModel():
         #### (e)  This method finally worked and it is so simple and elegant!
         def loop_func(batch_no): 
             a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])    
-            a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.encoder_cell.output_size])    
+            a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
             return tf.matmul(a11,a12)
 
-        a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32)  #tf.matmul(x[0],x[1])
+        a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32) 
         a14=tf.squeeze(a13,[1])
 
         print 'end building attention context graph'
@@ -168,8 +170,7 @@ class AttentionModel():
 
         batch_size = tf.shape(target_sequence)[0]
 
-        state = initial_state  ## FIXME: this may no longer be possible 
-        #state = tf.reshape(tf.tile(self.initial_dec_state,[batch_size,1]),[-1,self.dec_state_size])
+        state = initial_state 
 
         loss = 0.0
         cell = self.decoder_cell[lang]
@@ -313,8 +314,7 @@ class AttentionModel():
 
         batch_size = tf.shape(sequences)[0]
         initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang)
-        state = initial_state  ## FIXME: this may no longer be possible 
-        #state = tf.reshape(tf.tile(self.initial_dec_state,[batch_size,1]),[-1,self.dec_state_size])
+        state = initial_state 
         outputs=[]
 
         for i in range(self.max_sequence_length):
