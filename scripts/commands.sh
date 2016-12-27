@@ -5,7 +5,7 @@ export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 #####################################################
 #################### LANGUAGE MODEL ################
@@ -119,7 +119,7 @@ export CUDA_VISIBLE_DEVICES=0
 #done     
 
 
-################## supervised transliteration #########################
+################### supervised transliteration #########################
 
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16
 ## refdir contains same ref as data_dir, but in XML format required for evaluation tools. These are from the CoNLL 2016 directories
@@ -238,43 +238,44 @@ done
 #            
 #            echo 'Start: ' $expname $langpair $representation 
 #    
-#            ## Training and Testing 
-#            rm -rf $o
-#            mkdir -p $o
-#            python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
-#                --train_mode unsup \
-#                --langs "$src_lang,$tgt_lang" \
-#                --data_dir  $data_dir/$langpair \
-#                --output_dir  $o \
-#                --representation $representation > $o/train.log 2>&1 
+#            ### Training and Testing 
+#            #rm -rf $o
+#            #mkdir -p $o
+#            #python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
+#            #    --train_mode unsup \
+#            #    --langs "$src_lang,$tgt_lang" \
+#            #    --data_dir  $data_dir/$langpair \
+#            #    --output_dir  $o \
+#            #    --representation $representation > $o/train.log 2>&1 
 #    
 #            #### Evaluation starts 
-#    
-#            prefix=`ls $o/outputs/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
+#            
+#            resdir=final_output
+#            prefix=`ls $o/$resdir/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
 #    
 #            ## convert to required format 
 #            python utilities.py convert_output_format  \
-#                $o/outputs/${prefix}${src_lang}-${tgt_lang}_ \
-#                $o/outputs/${prefix}test.${tgt_lang} 
+#                $o/${resdir}/${prefix}${src_lang}-${tgt_lang}_ \
+#                $o/${resdir}/${prefix}test.${tgt_lang} 
 #    
 #            # convert to n-best format 
 #            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
-#                $o/outputs/${prefix}test.${tgt_lang}  $o/outputs/${prefix}test.nbest.${tgt_lang}
+#                $o/$resdir/${prefix}test.${tgt_lang}  $o/$resdir/${prefix}test.nbest.${tgt_lang}
 #            
 #            # generate NEWS 2015 evaluation format output file 
 #            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
 #                    "$ref_dir/$src_lang-$tgt_lang/test.id" \
 #                    "$ref_dir/$src_lang-$tgt_lang/test.xml" \
-#                    "$o/outputs/${prefix}test.nbest.${tgt_lang}" \
-#                    "$o/outputs/${prefix}test.nbest.${tgt_lang}.xml" \
+#                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}" \
+#                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}.xml" \
 #                    "system" "conll2016" "$src_lang" "$tgt_lang"  
 #            
 #            # run evaluation 
 #            python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
 #                    -t "$ref_dir/$src_lang-$tgt_lang/test.xml" \
-#                    -i "$o/outputs/${prefix}test.nbest.${tgt_lang}.xml" \
-#                    -o "$o/outputs/${prefix}test.nbest.${tgt_lang}.detaileval.csv" \
-#                    > "$o/outputs/${prefix}test.nbest.${tgt_lang}.eval"
+#                    -i "$o/$resdir/${prefix}test.nbest.${tgt_lang}.xml" \
+#                    -o "$o/$resdir/${prefix}test.nbest.${tgt_lang}.detaileval.csv" \
+#                     > "$o/$resdir/${prefix}test.nbest.${tgt_lang}.eval"
 #    
 #            echo 'End: ' $expname $langpair $representation 
 #    

@@ -346,6 +346,7 @@ if __name__ == '__main__' :
             validation_losses.append(validation_loss)
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Validation loss: "+str(validation_loss)
+            sys.stdout.flush()
 
             # If validation loss is increasing since last 3 epochs, take the last 4th model and stop training process
             if(completed_epochs>=4 and all([i>j for (i,j) in zip(validation_losses[-3:],validation_losses[-4:-1])])):
