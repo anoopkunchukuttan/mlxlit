@@ -6,13 +6,106 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
 
+class Encoder(object):
+
+    def encode(self, sequences, sequence_lengths):
+        '''
+            sequences: batch_size * max_length
+            sequence_lengths: batch_size
+        '''
+        pass 
+
+    def get_output_size(self): 
+        pass 
+
+    def get_state_size(self): 
+        pass 
+
+class SimpleRnnEncoder(Encoder):
+
+    def __init__(self,embedding_size,rnn_size,max_sequence_length):
+        self.embedding_size=embedding_size
+        self.rnn_size=rnn_size 
+        self.max_sequence_length=max_sequence_length 
+        self.encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+
+    def encode(self, sequence_embeddings, sequence_lengths):
+        x = tf.transpose(sequence_embeddings,[1,0,2])
+        x = tf.reshape(x,[-1,self.embedding_size])
+        x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
+        enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        return states, enc_outputs
+
+    def get_output_size(self): 
+        return self.encoder_cell.output_size
+
+    def get_state_size(self): 
+        return self.encoder_cell.state_size 
+
+class BidirectionalRnnEncoder(Encoder):
+
+    def __init__(self,embedding_size,rnn_size,max_sequence_length):
+        self.embedding_size=embedding_size
+        self.rnn_size=rnn_size 
+        self.max_sequence_length=max_sequence_length 
+        self.fw_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+        self.bw_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+
+    def encode(self, sequence_embeddings, sequence_lengths):
+        x = tf.transpose(sequence_embeddings,[1,0,2])
+        x = tf.reshape(x,[-1,self.embedding_size])
+        x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
+        enc_outputs, states, _ = rnn.bidirectional_rnn(self.fw_encoder_cell, self.bw_encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        return states, enc_outputs
+
+    def get_output_size(self): 
+        #return self.fw_encoder_cell.output_size + self.bw_encoder_cell.output_size
+        return 2*self.rnn_size 
+
+    def get_state_size(self): 
+        return self.fw_encoder_cell.state_size 
+
+#class CNNEncoder(Encoder):
+#
+#    def __init__(self,embedding_size,rnn_size,max_sequence_length):
+#        pass 
+#
+#    def encode(self, sequence_embeddings, sequence_lengths):
+#        input_data = tf.expand_dims(sequence_embeddings, -1)
+#
+#        # Create a convolution + maxpool layer for each filter size
+#        pooled_outputs = []
+#        for i, filter_size in enumerate(self.filter_sizes):
+#            with tf.name_scope("conv-maxpool-%s" % filter_size):
+#                # Convolution Layer
+#                filter_shape = [filter_size, self.embedding_size, 1, self.num_filters]
+#                W = tf.Variable(tf.random_uniform(filter_shape, [-0.1, 0.1]), name="W")
+#                b = tf.Variable(tf.constant(0.1, shape=[self.num_filters]), name="b")
+#                conv = tf.nn.conv2d(
+#                    input_data,
+#                    W,
+#                    strides=[1, 1, 1, 1],
+#                    padding="VALID",
+#                    name="conv")
+#                # Apply nonlinearity
+#                h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
+#                # Maxpooling over the outputs
+#                pooled = tf.nn.max_pool(
+#                    h,
+#                    ksize=[1, self.max_sequence_length - filter_size + 1, 1, 1],
+#                     
+#                    strides=[1, 1, 1, 1],
+#                    padding='VALID',
+#                    name="pool")
+#                pooled_outputs.append(pooled)
+
 # Do something with output folder
 class AttentionModel():
     def __init__(self,mapping,representation,embedding_size,max_sequence_length):
-        ## FIXME: need better variable initialziations,  reproducible of results 
+        ## FIXME: need better variable initialziations,  reproducible of results
         self.embedding_size = embedding_size
         self.mapping = mapping
-        rnn_size = embedding_size ## FIXME: embedding size and RNN size are the same, would be good to test with different ones 
+        rnn_size = embedding_size ## FIXME: embedding size and RNN size are the same, would be good to test with different ones
         self.rnn_size = rnn_size
         self.max_sequence_length = max_sequence_length
         self.representation=representation
@@ -35,14 +128,11 @@ class AttentionModel():
         self.embed_b = tf.Variable(tf.constant(0., shape=[embedding_size]), name = 'embed_b')
 
         # Creating BasicLSTM Cells and initial inputs to decoders
-        self.encoder_cell    = rnn_cell.BasicLSTMCell(rnn_size)
-        self.bk_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
-        #number_enc_layers=2
-        #lstm= rnn_cell.BasicLSTMCell(rnn_size)
-        #self.encoder_cell = rnn_cell.MultiRNNCell([lstm] * number_enc_layers)
+        ## Encoder
+        self.input_encoder=BidirectionalRnnEncoder(embedding_size,rnn_size,max_sequence_length)
 
         ## FIXME: what is the best way to initialize the input - I suppose with embedding for GO symbol
-        ## the variable need not even be saved 
+        ## the variable need not even be saved
         self.decoder_input = dict()
         for lang in self.lang_list:
             self.decoder_input[lang] = tf.random_uniform([1, embedding_size], dtype = tf.float32)
@@ -59,41 +149,36 @@ class AttentionModel():
         for lang in self.lang_list:
             self.out_W[lang] = tf.Variable(tf.random_uniform([self.rnn_size,self.vocab_size], -1*max_val, max_val),
                                             name='out_W_{}'.format(lang))
-            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]), 
+            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]),
                                             name='out_b_{}'.format(lang))
 
-        ## Attention mechanism paramters         
+        ## Attention mechanism paramters
         ## size of the context vector (will be twice encoder cell output size for bidirectional RNN)
-        self.ctxvec_size=2*self.rnn_size 
+        self.ctxvec_size=self.input_encoder.get_output_size()
 
-        ## Attention Neural Network 
-        self.attn_W = tf.Variable(tf.random_uniform([self.dec_state_size+self.embedding_size+self.ctxvec_size,1], 
+        ## Attention Neural Network
+        self.attn_W = tf.Variable(tf.random_uniform([self.dec_state_size+self.embedding_size+self.ctxvec_size,1],
             -1*max_val, max_val), name = 'attn_W')
-        self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')  
+        self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')
 
-    # Given sequences of char_ids, compute hidden representation of each sequence
+    ## Given sequences of char_ids, compute hidden representation of each sequence
     def compute_hidden_representation(self, sequences, sequence_lengths, lang):
-        x = tf.transpose(tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b),[1,0,2])
-        x = tf.reshape(x,[-1,self.embedding_size])
-        x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
-        #enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
-        enc_outputs, states, _ = rnn.bidirectional_rnn(self.encoder_cell, self.bk_encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
-
+        sequence_embeddings = tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b)
+        states, enc_outputs = self.input_encoder.encode(sequence_embeddings,sequence_lengths)
         return states, enc_outputs
 
-    def compute_attention_context(self,prev_state,prev_out_embed,enc_outputs): 
+    def compute_attention_context(self,prev_state,prev_out_embed,enc_outputs):
 
         print 'start building attention context graph'
         batch_size=tf.shape(prev_state)[0]
 
-
         ## getting prev_state and prev_out_embed in the correct shape
-        ## and duplicate them for cacatenating with enc_outputs 
+        ## and duplicate them for cacatenating with enc_outputs
         att_ref=tf.concat(1,[prev_state,prev_out_embed])
         a1=tf.tile(att_ref,[1,self.max_sequence_length])
         a2=tf.reshape(a1,[-1,self.dec_state_size+self.embedding_size],name='attn__a2__state__embed_shaped')
 
-        ## reshaping and transposing enc_outputs 
+        ## reshaping and transposing enc_outputs
         a3=tf.pack(enc_outputs)
         a4=tf.transpose(a3,[1,0,2])
         a5=tf.reshape(a4,[-1,self.ctxvec_size],name='attn__a5__enc_outputs_shaped')
@@ -109,7 +194,7 @@ class AttentionModel():
         a8=tf.nn.tanh(a7,name='attn__a7__network_output')
         a9=tf.reshape(a8,[-1,self.max_sequence_length],name='attn__a9')
 
-        ## apply softmax to compute the weights for the encoder outputs 
+        ## apply softmax to compute the weights for the encoder outputs
         a10=tf.nn.softmax(a9,name='attn__a10__softmax')
 
         # computing context vector
@@ -118,28 +203,28 @@ class AttentionModel():
         #a11=tf.unpack(a10,name='attn__a11__ctxweighting_input1')
         #a12=tf.unpack(a4,num=batch_size,name='attn__a12__ctxweighting_input2')  ## organized as list, one for each input in batch (used later)
         #a13=[]
-        #for i  in range(batch_size): 
+        #for i  in range(batch_size):
         #    a13.append(tf.matmul(tf.expand_dims(a11[i],0),a12[i],name='attn__a13__{}__ctx_weighting'.format(i)))
         #a14=tf.squeeze(tf.pack(a13),name='attn__a14__output')
 
         ###### (b)
         #a13=[]
-        #def loop_func(batch_no): 
-        #    a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])    
-        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
+        #def loop_func(batch_no):
+        #    a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])
+        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])
         #    a13.append(tf.matmul(a11,a12,name='attn__a13__{}__ctx_weighting'.format(batch_no)))
         #    return tf.add(batch_no,1)
 
-        #cond=lambda bno:tf.less(bno,batch_size) 
+        #cond=lambda bno:tf.less(bno,batch_size)
         #bno=tf.constant(0)
 
         #tf.while_loop(cond,loop_func,[bno])
         #a14=tf.squeeze(tf.pack(a13),[1],name='attn__a14__output')
 
         ###### (c)
-        #def loop_func(batch_no,_): 
-        #    a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])    
-        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
+        #def loop_func(batch_no,_):
+        #    a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])
+        #    a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])
         #    c=tf.matmul(a11,a12,name='attn__a13__{}__ctx_weighting'.format(batch_no))
         #    return (tf.add(batch_no,1),c)
 
@@ -155,12 +240,12 @@ class AttentionModel():
         #a14=tf.squeeze(tf.pack(a13),[1],name='attn__a14__output')
 
         #### (e)  This method finally worked and it is so simple and elegant!
-        def loop_func(batch_no): 
-            a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])    
-            a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])    
+        def loop_func(batch_no):
+            a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])
+            a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])
             return tf.matmul(a11,a12)
 
-        a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32,parallel_iterations=100) 
+        a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32,parallel_iterations=100)
         a14=tf.squeeze(a13,[1])
 
         print 'end building attention context graph'
@@ -171,7 +256,7 @@ class AttentionModel():
 
         batch_size = tf.shape(target_sequence)[0]
 
-        state = initial_state 
+        state = initial_state
 
         loss = 0.0
         cell = self.decoder_cell[lang]
@@ -187,16 +272,16 @@ class AttentionModel():
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
-            ### compute the context vector using the attention mechanism                
+            ### compute the context vector using the attention mechanism
             context=self.compute_attention_context(state,current_emb,enc_output)
             current_input=tf.concat(1,[current_emb,context])
             #current_input=current_emb
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
-            with tf.variable_scope('decoder'): 
+            with tf.variable_scope('decoder'):
                 if i > 0 : tf.get_variable_scope().reuse_variables()
-                output, state = cell(current_input,state)  
+                output, state = cell(current_input,state)
 
             # Generating one-hot labels for target_sequences
             labels = tf.expand_dims(target_sequence[:,i],1)
@@ -261,9 +346,9 @@ class AttentionModel():
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(mean_squared_difference)
         return optimizer
 
-    # Optimizer to 
-    #   minimize L12 + L21 
-    # where, 
+    # Optimizer to
+    #   minimize L12 + L21
+    # where,
     #   L12 =  (lang1->lang2 negative log likelihood)
     #   L21 =  (lang2->lang1 negative log likelihood)
 
@@ -282,9 +367,9 @@ class AttentionModel():
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(total_loss)
         return optimizer
 
-    # Optimizer to 
+    # Optimizer to
     #   minimize L12 + L21 + D
-    # where, 
+    # where,
     #   L12 =  (lang1->lang2 negative log likelihood)
     #   L21 =  (lang2->lang1 negative log likelihood)
     #     D =  mean squared differences of hidden representation of same word from different languages
@@ -315,7 +400,7 @@ class AttentionModel():
 
         batch_size = tf.shape(sequences)[0]
         initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang)
-        state = initial_state 
+        state = initial_state
         outputs=[]
 
         for i in range(self.max_sequence_length):
@@ -326,16 +411,16 @@ class AttentionModel():
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
-            ### compute the context vector using the attention mechanism                
+            ### compute the context vector using the attention mechanism
             context=self.compute_attention_context(state,current_emb,enc_output)
             current_input=tf.concat(1,[current_emb,context])
             #current_input=current_emb
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
-            with tf.variable_scope('decoder'): 
+            with tf.variable_scope('decoder'):
                 if i > 0 : tf.get_variable_scope().reuse_variables()
-                output, state = self.decoder_cell[target_lang](current_input,state)  
+                output, state = self.decoder_cell[target_lang](current_input,state)
 
             logit_words = tf.add(tf.matmul(output,self.out_W[target_lang]),self.out_b[target_lang])
 
