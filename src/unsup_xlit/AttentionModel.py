@@ -148,7 +148,7 @@ class AttentionModel():
         # Finds bit-vector representation for each character of each language
         self.bitvector_embeddings={}
         for lang in self.lang_list:
-            self.bitvector_embeddings[lang] = tf.constant(self.mapping.get_bitvector_embeddings(lang,self.representation))
+            self.bitvector_embeddings[lang] = tf.constant(self.mapping.get_bitvector_embeddings(lang,self.representation),dtype=tf.float32)
         self.bitvector_embedding_size=self.mapping.get_bitvector_embedding_size(self.representation)
 
         # Converting the character representation to embedding_size vector

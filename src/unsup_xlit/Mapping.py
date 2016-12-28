@@ -133,7 +133,7 @@ class Mapping():
         new_rows=np.zeros([additional_vocab,pv.shape[1]])
         pv=np.concatenate([pv,new_rows])
     
-        return np.concatentate([ov,pv],1)
+        return np.concatenate([ov,pv],1)
 
     def get_bitvector_embeddings(self,lang,representation): 
     
