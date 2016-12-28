@@ -1,11 +1,11 @@
 #!/bin/bash 
 
 export MLXLIT_BASE=/home/development/anoop/experiments/multilingual_unsup_xlit
-export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
+export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit_dev
 export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 #####################################################
 #################### LANGUAGE MODEL ################
@@ -119,71 +119,135 @@ export CUDA_VISIBLE_DEVICES=1
 #done     
 
 
-################### supervised transliteration #########################
+#################### supervised transliteration #########################
+#
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16
+### refdir contains same ref as data_dir, but in XML format required for evaluation tools. These are from the CoNLL 2016 directories
+#ref_dir=~/experiments/unsupervised_transliterator/data/nonparallel/pb
+#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16
+#
+##for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
+##for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
+#for expname in `echo 1_3_cnnencoder`
+#do 
+#
+#    exptype=`echo $expname | cut -f 1 -d '_'`
+#
+#    ######### choose specific model  ############
+#
+#    if [ $exptype = '1' ]  # sup_nomono
+#    then 
+#        train_bidirectional=''
+#        use_monolingual=''
+#    elif [ $exptype = '2' ] # bisup_nomono 
+#    then 
+#        train_bidirectional='--train_bidirectional'
+#        use_monolingual=''
+#    elif [ $exptype = '3' ] # sup_mono 
+#    then 
+#        train_bidirectional=''
+#        use_monolingual='--use_monolingual'
+#    elif [ $exptype = '4' ] # bisup_mono
+#    then 
+#        train_bidirectional='--train_bidirectional'
+#        use_monolingual='--use_monolingual'
+#    fi 
+#   
+#    ######## Experiment loop starts here ########
+#
+#    #for langpair in `echo hi-kn bn-hi ta-kn`
+#    for langpair in `echo hi-kn`
+#    do
+#        src_lang=`echo $langpair | cut -f 1 -d '-'`
+#        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#    
+#        #for representation in `echo onehot phonetic`
+#        for representation in `echo phonetic`
+#        do 
+#            o=$output_dir/$expname/$representation/$langpair
+#            
+#            echo 'Start: ' $expname $langpair $representation 
+#    
+#            ## Training and Testing 
+#            #rm -rf $o
+#            #mkdir -p $o
+#            #python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
+#            #    --train_mode sup \
+#            #    $train_bidirectional \
+#            #    $use_monolingual \
+#            #    --lang_pairs "$src_lang-$tgt_lang" \
+#            #    --data_dir  $data_dir/$langpair \
+#            #    --output_dir  $o \
+#            #    --start_from $o/final_model_epochs_?? \
+#            #    --representation $representation \
+#            #    --max_epochs 100 >> $o/train.log 2>&1 
+#    
+#            #### Evaluation starts 
+#            
+#            resdir=final_output
+#            prefix=`ls $o/$resdir/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
+#    
+#            ## convert to required format 
+#            python utilities.py convert_output_format  \
+#                $o/${resdir}/${prefix}${src_lang}-${tgt_lang}_ \
+#                $o/${resdir}/${prefix}test.${tgt_lang} 
+#    
+#            # convert to n-best format 
+#            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
+#                $o/$resdir/${prefix}test.${tgt_lang}  $o/$resdir/${prefix}test.nbest.${tgt_lang}
+#            
+#            # generate NEWS 2015 evaluation format output file 
+#            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+#                    "$ref_dir/$src_lang-$tgt_lang/test.id" \
+#                    "$ref_dir/$src_lang-$tgt_lang/test.xml" \
+#                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}" \
+#                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}.xml" \
+#                    "system" "conll2016" "$src_lang" "$tgt_lang"  
+#            
+#            # run evaluation 
+#            python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+#                    -t "$ref_dir/$src_lang-$tgt_lang/test.xml" \
+#                    -i "$o/$resdir/${prefix}test.nbest.${tgt_lang}.xml" \
+#                    -o "$o/$resdir/${prefix}test.nbest.${tgt_lang}.detaileval.csv" \
+#                     > "$o/$resdir/${prefix}test.nbest.${tgt_lang}.eval"
+#    
+#            echo 'End: ' $expname $langpair $representation 
+#    
+#        done 
+#    done     
+#
+#
+#done 
 
-data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16
+########### EVALUATE SPECIFIC ITERATION #################
+
 ## refdir contains same ref as data_dir, but in XML format required for evaluation tools. These are from the CoNLL 2016 directories
 ref_dir=~/experiments/unsupervised_transliterator/data/nonparallel/pb
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16
 
-#for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
-#for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
-for expname in `echo 1_2_attention_2`
+prefix=016
+
+for expname in `echo 1_3_cnnencoder`
 do 
 
-    exptype=`echo $expname | cut -f 1 -d '_'`
-
-    ######### choose specific model  ############
-
-    if [ $exptype = '1' ]  # sup_nomono
-    then 
-        train_bidirectional=''
-        use_monolingual=''
-    elif [ $exptype = '2' ] # bisup_nomono 
-    then 
-        train_bidirectional='--train_bidirectional'
-        use_monolingual=''
-    elif [ $exptype = '3' ] # sup_mono 
-    then 
-        train_bidirectional=''
-        use_monolingual='--use_monolingual'
-    elif [ $exptype = '4' ] # bisup_mono
-    then 
-        train_bidirectional='--train_bidirectional'
-        use_monolingual='--use_monolingual'
-    fi 
-   
     ######## Experiment loop starts here ########
 
     #for langpair in `echo hi-kn bn-hi ta-kn`
-    for langpair in `echo ta-kn`
+    for langpair in `echo hi-kn`
     do
         src_lang=`echo $langpair | cut -f 1 -d '-'`
         tgt_lang=`echo $langpair | cut -f 2 -d '-'`
     
         #for representation in `echo onehot phonetic`
-        for representation in `echo onehot`
+        for representation in `echo phonetic`
         do 
             o=$output_dir/$expname/$representation/$langpair
             
             echo 'Start: ' $expname $langpair $representation 
     
-            ## Training and Testing 
-            rm -rf $o
-            mkdir -p $o
-            python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
-                --train_mode sup \
-                $train_bidirectional \
-                $use_monolingual \
-                --lang_pairs "$src_lang-$tgt_lang" \
-                --data_dir  $data_dir/$langpair \
-                --output_dir  $o \
-                --representation $representation > $o/train.log 2>&1 
-    
             #### Evaluation starts 
             
-            resdir=final_output
-            prefix=`ls $o/$resdir/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
+            resdir=outputs
     
             ## convert to required format 
             python utilities.py convert_output_format  \
@@ -213,7 +277,6 @@ do
     
         done 
     done     
-
 
 done 
 
