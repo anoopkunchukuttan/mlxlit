@@ -1,8 +1,6 @@
 from collections import defaultdict
 import numpy as np 
 
-import tensorflow as tf 
-
 from indicnlp.script import  indic_scripts as isc
 from indicnlp import langinfo as li
 
@@ -72,6 +70,8 @@ class Mapping():
             return isc.PHONETIC_VECTOR_LENGTH+len(self.addvocab_c2i)
         elif representation=='onehot': 
             return self.get_vocab_size()
+        elif representation=='onehot_and_phonetic':
+            return self.get_vocab_size()+isc.PHONETIC_VECTOR_LENGTH
 
     def get_phonetic_bitvector_embeddings(self,lang):
         """
@@ -101,17 +101,48 @@ class Mapping():
         for j,k in zip(range(org_shape[0],pv.shape[0]),range(org_shape[1],pv.shape[1])): 
             pv[j,k]=1
     
-        return tf.constant(pv,dtype = tf.float32)
+        return pv
     
     def get_onehot_bitvector_embeddings(self,lang): 
-        return tf.constant(np.identity(self.get_vocab_size()),dtype = tf.float32)
+        return np.identity(self.get_vocab_size())
     
+    def get_onehot_phonetic_bitvector_embeddings(self,lang): 
+        """
+        Concatenation of the one-hot and phonetic represenation
+        For vocabulary items which don't have a phonetic representation, they are represented in the one-hot
+        component. So, the phonetic component does not have the onehot subcomponent to avoid onehot duplication
+        (unlike the call in get_phonetic_bitvector_embeddings)
+        """
+        ## TODO: alternative representation - can be deleted later
+        #return np.concatenate([self.get_onehot_bitvector_embeddings(lang),self.get_phonetic_bitvector_embeddings(lang)],1)
+
+        #### create the onehot component of the representation 
+        ov=np.identity(self.get_vocab_size())
+
+        #### create the phonetic componet of the representation 
+
+        ##  phonetic embeddings for basic characters 
+        pv=isc.get_phonetic_info(lang)[1]
+    
+        ## vocab statistics
+        pv=np.copy(pv)
+        org_shape=pv.shape
+        additional_vocab=self.get_vocab_size()-org_shape[0]
+    
+        ##  new rows added 
+        new_rows=np.zeros([additional_vocab,pv.shape[1]])
+        pv=np.concatenate([pv,new_rows])
+    
+        return np.concatentate([ov,pv],1)
+
     def get_bitvector_embeddings(self,lang,representation): 
     
         if representation=='phonetic':
             return self.get_phonetic_bitvector_embeddings(lang)
         elif representation=='onehot': 
             return self.get_onehot_bitvector_embeddings(lang)
+        elif representation=='onehot_and_phonetic': 
+            return self.get_onehot_phonetic_bitvector_embeddings(lang)
 
     # Given sequence of character ids, return word.
     # A word is space separated character with GO, EOW (End of Word) and PAD character to make total length = max_sequence_length

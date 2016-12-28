@@ -35,7 +35,7 @@ if __name__ == '__main__' :
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation and RNN')
-    parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic" or "onehot"')
+    parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic", "onehot", "onehot_and_phonetic"')
 
     parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
     parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
