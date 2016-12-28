@@ -1,12 +1,9 @@
-import ParallelDataReader
-import MonoDataReader
 import Mapping
+import encoders
 
-import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import rnn, rnn_cell
 
-from unsupxlit import encoders
 
 # Do something with output folder
 class AttentionModel():
@@ -47,9 +44,9 @@ class AttentionModel():
 
         ## FIXME: what is the best way to initialize the input - I suppose with embedding for GO symbol
         ## the variable need not even be saved
-        self.decoder_input = dict()
-        for lang in self.lang_list:
-            self.decoder_input[lang] = tf.random_uniform([1, embedding_size], dtype = tf.float32)
+        #self.decoder_input = dict()
+        #for lang in self.lang_list:
+        #    self.decoder_input[lang] = tf.random_uniform([1, embedding_size], dtype = tf.float32)
 
         self.decoder_cell = dict()
         with tf.variable_scope('decoder'):
@@ -180,7 +177,8 @@ class AttentionModel():
             # for first iteration, decoder_input embedding is used, otherwise, output from previous iteration is used
             # embedding lookup replace the character index with its embedding_size vector representation, which is given to the rnn_cell
             if(i==0):
-                current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
+                #current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
+                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],Mapping.Mapping.GO)+self.embed_b # FIXME: why is this addition required?
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b  ##FIXME: why is this addition needed
 
@@ -319,7 +317,8 @@ class AttentionModel():
 
         for i in range(self.max_sequence_length):
             if(i==0):
-                current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
+                #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
+                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],Mapping.Mapping.GO)+self.embed_b # FIXME: why is this addition required?
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b # FIXME: why is this addition required?
 
