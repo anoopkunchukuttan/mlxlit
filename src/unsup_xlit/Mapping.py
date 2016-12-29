@@ -36,7 +36,7 @@ class Mapping():
             self.addvocab_i2c[i]=c
         self.update_mode=False
 
-    def get_index(self,c,lang): 
+    def get_index(self,c,lang=None): 
         if len(c)==1 and isc.in_coordinated_range(c,lang): 
             index=isc.get_offset(c,lang)
         else:

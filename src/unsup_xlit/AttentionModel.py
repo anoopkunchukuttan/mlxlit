@@ -178,10 +178,13 @@ class AttentionModel():
             # embedding lookup replace the character index with its embedding_size vector representation, which is given to the rnn_cell
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
-                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],Mapping.Mapping.GO)+self.embed_b # FIXME: why is this addition required?
+                x = tf.expand_dims(
+                        tf.nn.embedding_lookup(self.embed_W[lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                        0) # FIXME: why is this addition required?
+                current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b  ##FIXME: why is this addition needed
-
+            print current_emb.get_shape()
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism
@@ -318,7 +321,10 @@ class AttentionModel():
         for i in range(self.max_sequence_length):
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
-                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],Mapping.Mapping.GO)+self.embed_b # FIXME: why is this addition required?
+                x = tf.expand_dims(
+                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                        0) # FIXME: why is this addition required?
+                current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b # FIXME: why is this addition required?
 
