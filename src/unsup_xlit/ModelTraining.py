@@ -31,6 +31,7 @@ if __name__ == '__main__' :
     parser.add_argument('--batch_size', type = int, default = 64, help = 'size of each batch used in training')
     parser.add_argument('--max_epochs', type = int, default = 32, help = 'maximum number of epochs')
     parser.add_argument('--learning_rate', type = float, default = 0.001, help = 'learning rate of Adam Optimizer')
+    parser.add_argument('--dropout_keep_prob', type = float, default = 0.5, help = 'keep probablity for the dropout layers')
     parser.add_argument('--max_seq_length', type = int, default = 50, help = 'maximum sequence length')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
 
@@ -63,6 +64,7 @@ if __name__ == '__main__' :
     learning_rate = args.learning_rate
     max_sequence_length = args.max_seq_length
     infer_every = args.infer_every
+    dropout_keep_prob = args.dropout_keep_prob
 
     embedding_size = args.embedding_size
     representation = args.representation
@@ -181,7 +183,7 @@ if __name__ == '__main__' :
     # Creating Model object
     model = AttentionModel.AttentionModel(mapping,representation,embedding_size,max_sequence_length) # Pass parameters
 
-    ## Creating placeholder for sequences, masks and lengths
+    ## Creating placeholder for sequences, masks and lengths and dropout keep probability 
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
     batch_sequence_masks = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
     batch_sequence_lengths = tf.placeholder(shape=[None],dtype=tf.float32)
@@ -189,12 +191,14 @@ if __name__ == '__main__' :
     batch_sequences_2 = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
     batch_sequence_masks_2 = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
     batch_sequence_lengths_2 = tf.placeholder(shape=[None],dtype=tf.float32)
-
+    
+    dropout_keep_prob_var = tf.placeholder(dtype=tf.float32)
+    
     # Optimizers for training using monolingual data
     # Has only one optimizer which minimizes loss of sequence reconstruction
     unsup_optimizer = dict()
     for lang in mono_langs:
-        unsup_optimizer[lang] = model.get_mono_optimizer(learning_rate,lang,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
+        unsup_optimizer[lang] = model.get_mono_optimizer(learning_rate,lang,batch_sequences,batch_sequence_masks,batch_sequence_lengths,dropout_keep_prob_var)
 
     # Optimizers for training using parallel data
     # For each language pair, there are 3 optimizers:
@@ -219,36 +223,36 @@ if __name__ == '__main__' :
             sup_optimizer[(lang1,lang2)] = [
                 model.get_parallel_optimizer(learning_rate,
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob_var),
                 model.get_parallel_optimizer(learning_rate,
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths),
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,dropout_keep_prob_var),
                 model.get_parallel_difference_optimizer(learning_rate,
                     lang1,batch_sequences,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_lengths_2)]
+                    lang2,batch_sequences_2,batch_sequence_lengths_2,dropout_keep_prob_var)]
 
             #### (b) sum of all losses 
             #sup_optimizer[(lang1,lang2)] = [
             #    model.get_parallel_all_optimizer(learning_rate,
             #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob_var),
             #        ]
 
             #### (c) optimize separately: (i) sum of translation losses (ii) representation loss
             #sup_optimizer[(lang1,lang2)] = [
             #    model.get_parallel_bi_optimizer(learning_rate,
             #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob_var),
             #    model.get_parallel_difference_optimizer(learning_rate,
             #        lang1,batch_sequences,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_lengths_2),
+            #        lang2,batch_sequences_2,batch_sequence_lengths_2,dropout_keep_prob_var),
             #       ]
         else: 
 
             sup_optimizer[(lang1,lang2)] = [
                 model.get_parallel_optimizer(learning_rate,
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2),
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob_var),
                     ]
 
     # Finding validation sequence loss
@@ -262,14 +266,14 @@ if __name__ == '__main__' :
         if (train_mode=='sup' and train_bidirectional) or train_mode=='unsup':
             validation_seq_loss[lang_pair] = model.seq_loss_2(
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2) \
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob_var) \
                 + model.seq_loss_2(
                     lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths)
+                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,dropout_keep_prob_var)
         else:
             validation_seq_loss[lang_pair] = model.seq_loss_2(
                     lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2)
+                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob_var)
 
     # Predict output for test sequences
     infer_output = dict()
@@ -313,7 +317,7 @@ if __name__ == '__main__' :
             if(type(opti_lang) is str):     # If it is a monolingual dataset, call optimizer
                 lang = opti_lang
                 sequences,sequence_masks,sequence_lengths = mono_train_data[lang].get_next_batch(batch_size)
-                sess.run(unsup_optimizer[lang], feed_dict = {batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths})
+                sess.run(unsup_optimizer[lang], feed_dict = {batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,dropout_keep_prob_var:dropout_keep_prob})
                 fractional_epochs[idx] += float(len(sequences))/mono_train_data[opti_lang].num_words
             else:                           # If it is a bilingual dataset, call corresponding optimizers
                 lang1 = opti_lang[0]
@@ -323,7 +327,8 @@ if __name__ == '__main__' :
                 
                 sess.run(sup_optimizer[opti_lang], feed_dict = {
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
+                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
+                    dropout_keep_prob_var:dropout_keep_prob
                     })
 
                 fractional_epochs[idx] += float(len(sequences))/parallel_train_data[opti_lang].num_words
@@ -341,7 +346,8 @@ if __name__ == '__main__' :
                 sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_valid_data[lang_pair].get_data()
                 validation_loss += sess.run(validation_seq_loss[lang_pair], feed_dict = {
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2
+                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
+                    dropout_keep_prob_var:dropout_keep_prob
                     })
             validation_losses.append(validation_loss)
 

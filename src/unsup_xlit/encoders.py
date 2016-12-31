@@ -24,11 +24,12 @@ class SimpleRnnEncoder(Encoder):
         self.max_sequence_length=max_sequence_length 
         self.encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
 
-    def encode(self, sequence_embeddings, sequence_lengths):
+    def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
-        enc_outputs, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        cell=rnn_cell.DropoutWrapper(self.encoder_cell,output_keep_prob=dropout_keep_prob)
+        enc_outputs, states = rnn.rnn(cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
         return states, enc_outputs
 
     def get_output_size(self): 
@@ -46,11 +47,13 @@ class BidirectionalRnnEncoder(Encoder):
         self.fw_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
         self.bw_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
 
-    def encode(self, sequence_embeddings, sequence_lengths):
+    def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
-        enc_outputs, states, _ = rnn.bidirectional_rnn(self.fw_encoder_cell, self.bw_encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        fw_cell=rnn_cell.DropoutWrapper(self.fw_encoder_cell,output_keep_prob=dropout_keep_prob)
+        bw_cell=rnn_cell.DropoutWrapper(self.bw_encoder_cell,output_keep_prob=dropout_keep_prob)
+        enc_outputs, states, _ = rnn.bidirectional_rnn(fw_cell, bw_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
         return states, enc_outputs
 
     def get_output_size(self): 
@@ -77,7 +80,7 @@ class CNNEncoder(Encoder):
                 self.W.append(tf.Variable(tf.random_uniform(filter_shape, -0.1, 0.1), name="W"))
                 self.b.append(tf.Variable(tf.constant(0.0, shape=[self.num_filters]), name="b"))
 
-    def encode(self, sequence_embeddings, sequence_lengths):
+    def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         input_data = tf.expand_dims(sequence_embeddings, -1)
 
         # Create a convolution + maxpool layer for each filter size
@@ -107,8 +110,8 @@ class CNNEncoder(Encoder):
         enc_output_matrix=tf.reshape(tf.squeeze(tf.concat(3,pooled_outputs)),
                 [-1,self.max_sequence_length,total_num_filters])
 
-        ## output encoding 
-        enc_outputs=tf.unpack(tf.transpose(enc_output_matrix,[1,0,2]))
+        ## output encoding  and dropout 
+        enc_outputs=tf.unpack(tf.transpose(tf.nn.dropout(enc_output_matrix,dropout_keep_prob),[1,0,2]))
 
         ## final state generation: taking as average of all time step vectors
         def state_gen_func(batch_no): 

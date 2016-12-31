@@ -42,11 +42,11 @@ class AttentionModel():
         filter_sizes=[1,2,3,4]
         self.input_encoder=encoders.CNNEncoder(embedding_size,max_sequence_length,filter_sizes,rnn_size*2/len(filter_sizes))
 
-        ## FIXME: what is the best way to initialize the input - I suppose with embedding for GO symbol
-        ## the variable need not even be saved
-        #self.decoder_input = dict()
-        #for lang in self.lang_list:
-        #    self.decoder_input[lang] = tf.random_uniform([1, embedding_size], dtype = tf.float32)
+        # FIXME: what is the best way to initialize the input - I suppose with embedding for GO symbol
+        # the variable need not even be saved
+        self.decoder_input = dict()
+        for lang in self.lang_list:
+            self.decoder_input[lang] = tf.random_uniform([1, embedding_size], dtype = tf.float32)
 
         self.decoder_cell = dict()
         with tf.variable_scope('decoder'):
@@ -73,9 +73,9 @@ class AttentionModel():
         self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')
 
     ## Given sequences of char_ids, compute hidden representation of each sequence
-    def compute_hidden_representation(self, sequences, sequence_lengths, lang):
+    def compute_hidden_representation(self, sequences, sequence_lengths, lang,dropout_keep_prob):
         sequence_embeddings = tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b)
-        states, enc_outputs = self.input_encoder.encode(sequence_embeddings,sequence_lengths)
+        states, enc_outputs = self.input_encoder.encode(sequence_embeddings,sequence_lengths,dropout_keep_prob)
         return states, enc_outputs
 
     def compute_attention_context(self,prev_state,prev_out_embed,enc_outputs):
@@ -163,28 +163,27 @@ class AttentionModel():
         return a14
 
     # Find cross entropy loss in predicting target_sequences from computed hidden representation (intial state)
-    def seq_loss(self, target_sequence, target_masks, lang, initial_state, enc_output):
+    def seq_loss(self, target_sequence, target_masks, lang, initial_state, enc_output,dropout_keep_prob):
 
         batch_size = tf.shape(target_sequence)[0]
 
         state = initial_state
 
         loss = 0.0
-        cell = self.decoder_cell[lang]
+        cell = rnn_cell.DropoutWrapper(self.decoder_cell[lang],output_keep_prob=dropout_keep_prob)
 
         # One step generate one character for each sequence
         for i in range(self.max_sequence_length):
             # for first iteration, decoder_input embedding is used, otherwise, output from previous iteration is used
             # embedding lookup replace the character index with its embedding_size vector representation, which is given to the rnn_cell
             if(i==0):
-                #current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
-                x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
-                        0) # FIXME: why is this addition required?
-                current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
+                current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
+                #x = tf.expand_dims(
+                #        tf.nn.embedding_lookup(self.embed_W[lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                #        0) # FIXME: why is this addition required?
+                #current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b  ##FIXME: why is this addition needed
-            print current_emb.get_shape()
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism
@@ -226,34 +225,34 @@ class AttentionModel():
     # For each lang:
     #    sequences, sequence masks: tensors of shape: [batch_size, max_sequence lengths]
     #    sequence_lengths: tensor of shape: [batch_sizes]
-    def seq_loss_2(self,lang1,sequences,sequence_masks,sequence_lengths,lang2,target_sequences,target_sequence_masks,target_sequence_lengths):
-        hidden_representation, enc_output = self.compute_hidden_representation(sequences,sequence_lengths,lang1)
-        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation,enc_output)
+    def seq_loss_2(self,lang1,sequences,sequence_masks,sequence_lengths,lang2,target_sequences,target_sequence_masks,target_sequence_lengths,dropout_keep_prob):
+        hidden_representation, enc_output = self.compute_hidden_representation(sequences,sequence_lengths,lang1,dropout_keep_prob)
+        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation,enc_output,dropout_keep_prob)
         return loss
 
     # Get a monolingual optimizer for 'lang' language
     # sequences, sequence masks: tensors of shape: [batch_size, max_sequence lengths]
     # sequence_lengths: tensor of shape: [batch_sizes]
-    def get_mono_optimizer(self,learning_rate,lang,sequences,sequence_masks,sequence_lengths):
-        hidden_representation, enc_output =  self.compute_hidden_representation(sequences,sequence_lengths,lang)
-        loss = self.seq_loss(sequences,sequence_masks,lang,hidden_representation,enc_output)
+    def get_mono_optimizer(self,learning_rate,lang,sequences,sequence_masks,sequence_lengths,dropout_keep_prob):
+        hidden_representation, enc_output =  self.compute_hidden_representation(sequences,sequence_lengths,lang,dropout_keep_prob)
+        loss = self.seq_loss(sequences,sequence_masks,lang,hidden_representation,enc_output,dropout_keep_prob)
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return optimizer
 
     # Get a monolingual optimizer for 'lang' language
     # sequences, sequence masks: tensors of shape: [batch_size, max_sequence lengths]
     # sequence_lengths: tensor of shape: [batch_sizes]
-    def get_parallel_optimizer(self,learning_rate,lang1,sequences,sequence_masks,sequence_lengths,lang2,target_sequences,target_sequence_masks,target_sequence_lengths):
-        hidden_representation, enc_output = self.compute_hidden_representation(sequences,sequence_lengths,lang1)
-        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation,enc_output)
+    def get_parallel_optimizer(self,learning_rate,lang1,sequences,sequence_masks,sequence_lengths,lang2,target_sequences,target_sequence_masks,target_sequence_lengths,dropout_keep_prob):
+        hidden_representation, enc_output = self.compute_hidden_representation(sequences,sequence_lengths,lang1,dropout_keep_prob)
+        loss = self.seq_loss(target_sequences,target_sequence_masks,lang2,hidden_representation,enc_output,dropout_keep_prob)
         optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return optimizer
 
     # Optimizer to minimize mean squared differences of hidden representation of same word from different languages
     # (mean taken over all batch_size x embedding_size elements)
-    def get_parallel_difference_optimizer(self,learning_rate,lang1,sequences1,sequence_lengths1,lang2,sequences2,sequence_lengths2):
-        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
-        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+    def get_parallel_difference_optimizer(self,learning_rate,lang1,sequences1,sequence_lengths1,lang2,sequences2,sequence_lengths2,dropout_keep_prob):
+        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1,dropout_keep_prob)
+        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2,dropout_keep_prob)
 
         squared_difference = tf.squared_difference(hidden_representation1,hidden_representation2)
         mean_squared_difference = tf.reduce_mean(squared_difference)
@@ -267,15 +266,15 @@ class AttentionModel():
     #   L12 =  (lang1->lang2 negative log likelihood)
     #   L21 =  (lang2->lang1 negative log likelihood)
 
-    def get_parallel_bi_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2):
-        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
-        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+    def get_parallel_bi_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2,dropout_keep_prob):
+        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1,dropout_keep_prob)
+        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2,dropout_keep_prob)
 
         # L12
-        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1, enc_output1)
+        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1, enc_output1,dropout_keep_prob)
 
         # L21
-        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2, enc_output2)
+        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2, enc_output2,dropout_keep_prob)
 
         total_loss=loss12+loss21
 
@@ -289,15 +288,15 @@ class AttentionModel():
     #   L21 =  (lang2->lang1 negative log likelihood)
     #     D =  mean squared differences of hidden representation of same word from different languages
 
-    def get_parallel_all_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2):
-        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1)
-        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2)
+    def get_parallel_all_optimizer(self,learning_rate,lang1,sequences1,sequence_masks1,sequence_lengths1,lang2,sequences2,sequence_masks2,sequence_lengths2,dropout_keep_prob):
+        hidden_representation1, enc_output1 = self.compute_hidden_representation(sequences1,sequence_lengths1,lang1,dropout_keep_prob)
+        hidden_representation2, enc_output2 = self.compute_hidden_representation(sequences2,sequence_lengths2,lang2,dropout_keep_prob)
 
         # L12
-        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1, enc_output1)
+        loss12 = self.seq_loss(sequences2,sequence_masks2,lang2,hidden_representation1, enc_output1,dropout_keep_prob)
 
         # L21
-        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2, enc_output2)
+        loss21 = self.seq_loss(sequences1,sequence_masks1,lang1,hidden_representation2, enc_output2,dropout_keep_prob)
 
         # D
         squared_difference = tf.squared_difference(hidden_representation1,hidden_representation2)
@@ -314,17 +313,19 @@ class AttentionModel():
     def transliterate(self, source_lang, sequences, sequence_lengths, target_lang):
 
         batch_size = tf.shape(sequences)[0]
-        initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang)
+        initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang,tf.constant(1.0))
         state = initial_state
         outputs=[]
 
+        cell = rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
+
         for i in range(self.max_sequence_length):
             if(i==0):
-                #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
-                x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
-                        0) # FIXME: why is this addition required?
-                current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
+                current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
+                #x = tf.expand_dims(
+                #        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                #        0) # FIXME: why is this addition required?
+                #current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b # FIXME: why is this addition required?
 
@@ -339,7 +340,7 @@ class AttentionModel():
             output = None
             with tf.variable_scope('decoder'):
                 if i > 0 : tf.get_variable_scope().reuse_variables()
-                output, state = self.decoder_cell[target_lang](current_input,state)
+                output, state = cell(current_input,state)
 
             logit_words = tf.add(tf.matmul(output,self.out_W[target_lang]),self.out_b[target_lang])
 
