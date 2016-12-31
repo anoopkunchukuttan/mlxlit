@@ -49,7 +49,7 @@ if __name__ == '__main__' :
 
     parser.add_argument('--data_dir', type = str, help = 'data directory')
     parser.add_argument('--output_dir', type = str, help = 'output folder name')
-    parser.add_argument('--start_from', type = str, default = None, help = 'location of saved model, to be used for starting')
+    parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the final epochs from previous runs')
 
     args = parser.parse_args()
 
@@ -87,8 +87,8 @@ if __name__ == '__main__' :
     data_dir = args.data_dir
     output_dir = args.output_dir #+'_e'+str(embedding_size)+'_b'+str(batch_size)+'_lr'+str(learning_rate)+'_'+str(calendar.timegm(time.gmtime()))
     start_from = args.start_from
-    if start_from is not None:
-        assert os.path.exists(start_from), "start_from: '"+ start_from +"'' file does not exist"
+    #if start_from is not None:
+    #    assert os.path.exists(start_from), "start_from: '"+ start_from +"'' file does not exist"
 
     # Setting the language parameters
     mono_langs=None
@@ -297,7 +297,8 @@ if __name__ == '__main__' :
     sess = tf.Session()
     sess.run(tf.initialize_all_variables())
     if(start_from is not None):
-        saver.restore(sess,start_from)
+        saver.restore(sess,'{}/final_model_epochs_{}'.format(output_dir,start_from))
+        completed_epochs=start_from
     
     tf.train.SummaryWriter(log_dir,sess.graph)
 
@@ -355,7 +356,7 @@ if __name__ == '__main__' :
             sys.stdout.flush()
 
             # If validation loss is increasing since last 3 epochs, take the last 4th model and stop training process
-            if(completed_epochs>=4 and all([i>j for (i,j) in zip(validation_losses[-3:],validation_losses[-4:-1])])):
+            if(completed_epochs>=4 and len(validation_losses)>=4 and all([i>j for (i,j) in zip(validation_losses[-3:],validation_losses[-4:-1])])):
                 completed_epochs -= 3
                 saver.restore(sess,temp_model_output_dir+'my_model-'+str(completed_epochs))
                 cont = False
