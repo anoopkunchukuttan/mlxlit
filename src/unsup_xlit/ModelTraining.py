@@ -384,7 +384,7 @@ if __name__ == '__main__' :
 
             # Save current model
             if(cont == True):
-                if(completed_epochs==1 or validation_losses[-1]<validation_losses[-2]):
+                if(completed_epochs==1 or (len(validation_losses)>=2 and validation_losses[-1]<validation_losses[-2])):
                     saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
     # save final model
