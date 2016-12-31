@@ -1,11 +1,11 @@
 #!/bin/bash 
 
 export MLXLIT_BASE=/home/development/anoop/experiments/multilingual_unsup_xlit
-export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
+export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit_dev
 export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 #####################################################
 #################### LANGUAGE MODEL ################
@@ -126,9 +126,11 @@ data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/co
 ref_dir=~/experiments/unsupervised_transliterator/data/nonparallel/pb
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16
 
+restore_epoch_number="17"
+
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
-for expname in `echo 1_3_cnnencoder`
+for expname in `echo 1_3_cnnencoder_dropout_2`
 do 
 
     exptype=`echo $expname | cut -f 1 -d '_'`
@@ -162,15 +164,15 @@ do
         tgt_lang=`echo $langpair | cut -f 2 -d '-'`
     
         #for representation in `echo onehot phonetic`
-        for representation in `echo onehot_and_phonetic`
+        for representation in `echo onehot`
         do 
             o=$output_dir/$expname/$representation/$langpair
             
             echo 'Start: ' $expname $langpair $representation 
     
-            ## Training and Testing 
-            rm -rf $o
-            mkdir -p $o
+            ### Training and Testing 
+            #rm -rf $o
+            #mkdir -p $o
 
             python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
                 --train_mode sup \
@@ -180,8 +182,8 @@ do
                 --data_dir  $data_dir/$langpair \
                 --output_dir  $o \
                 --representation $representation \
+                --start_from $restore_epoch_number \
                 --max_epochs 100 >> $o/train.log 2>&1 
-                #--start_from $o/final_model_epochs_?? \
     
             #### Evaluation starts 
             
