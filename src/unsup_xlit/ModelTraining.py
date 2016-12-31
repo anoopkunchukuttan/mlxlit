@@ -347,7 +347,7 @@ if __name__ == '__main__' :
                 validation_loss += sess.run(validation_seq_loss[lang_pair], feed_dict = {
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
                     batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
-                    dropout_keep_prob_var:dropout_keep_prob
+                    dropout_keep_prob_var:1.0
                     })
             validation_losses.append(validation_loss)
 
