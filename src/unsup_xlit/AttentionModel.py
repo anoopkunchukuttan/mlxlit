@@ -7,11 +7,10 @@ from tensorflow.python.ops import rnn, rnn_cell
 
 # Do something with output folder
 class AttentionModel():
-    def __init__(self,mapping,representation,embedding_size,max_sequence_length):
+    def __init__(self,mapping,representation,embedding_size,rnn_size,max_sequence_length):
         ## FIXME: need better variable initialziations,  reproducible of results
         self.embedding_size = embedding_size
         self.mapping = mapping
-        rnn_size = embedding_size ## FIXME: embedding size and RNN size are the same, would be good to test with different ones
         self.rnn_size = rnn_size
         self.max_sequence_length = max_sequence_length
         self.representation=representation
