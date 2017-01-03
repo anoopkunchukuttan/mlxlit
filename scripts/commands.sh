@@ -1,11 +1,11 @@
 #!/bin/bash 
 
 export MLXLIT_BASE=/home/development/anoop/experiments/multilingual_unsup_xlit
-export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit_dev
+export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=1
+#export CUDA_VISIBLE_DEVICES=0
 
 #####################################################
 #################### LANGUAGE MODEL ################
@@ -126,11 +126,11 @@ data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/co
 ref_dir=~/experiments/unsupervised_transliterator/data/nonparallel/pb
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16
 
-restore_epoch_number="17"
+#restore_epoch_number="17"
 
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
-for expname in `echo 1_3_cnnencoder_dropout_2`
+for expname in `echo 1_3_cnnencoder_dropout_3`
 do 
 
     exptype=`echo $expname | cut -f 1 -d '_'`
@@ -171,8 +171,8 @@ do
             echo 'Start: ' $expname $langpair $representation 
     
             ### Training and Testing 
-            #rm -rf $o
-            #mkdir -p $o
+            rm -rf $o
+            mkdir -p $o
 
             python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
                 --train_mode sup \
@@ -182,28 +182,28 @@ do
                 --data_dir  $data_dir/$langpair \
                 --output_dir  $o \
                 --representation $representation \
-                --start_from $restore_epoch_number \
-                --max_epochs 100 >> $o/train.log 2>&1 
+                --max_epochs 64 >> $o/train.log 2>&1 
     
+                #--start_from $restore_epoch_number \
             #### Evaluation starts 
             
             resdir=final_output
             prefix=`ls $o/$resdir/ | sed 's,[^0-9],,g' | sort -r -n | head -1`
     
-            ## convert to required format 
-            python utilities.py convert_output_format  \
-                $o/${resdir}/${prefix}${src_lang}-${tgt_lang}_ \
-                $o/${resdir}/${prefix}test.${tgt_lang} 
+            ### convert to required format 
+            #python utilities.py convert_output_format  \
+            #    $o/${resdir}/${prefix}${src_lang}-${tgt_lang}_ \
+            #    $o/${resdir}/${prefix}test.${tgt_lang} 
     
-            # convert to n-best format 
-            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
-                $o/$resdir/${prefix}test.${tgt_lang}  $o/$resdir/${prefix}test.nbest.${tgt_lang}
+            ## convert to n-best format 
+            #python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
+            #    $o/$resdir/${prefix}test.${tgt_lang}  $o/$resdir/${prefix}test.nbest.${tgt_lang}
             
             # generate NEWS 2015 evaluation format output file 
             python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
                     "$ref_dir/$src_lang-$tgt_lang/test.id" \
                     "$ref_dir/$src_lang-$tgt_lang/test.xml" \
-                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}" \
+                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
                     "$o/$resdir/${prefix}test.nbest.${tgt_lang}.xml" \
                     "system" "conll2016" "$src_lang" "$tgt_lang"  
             
@@ -252,20 +252,20 @@ done
 #            
 #            resdir=outputs
 #    
-#            ## convert to required format 
-#            python utilities.py convert_output_format  \
-#                $o/${resdir}/${prefix}${src_lang}-${tgt_lang}_ \
-#                $o/${resdir}/${prefix}test.${tgt_lang} 
+#            ### convert to required format 
+#            #python utilities.py convert_output_format  \
+#            #    $o/${resdir}/${prefix}${src_lang}-${tgt_lang}_ \
+#            #    $o/${resdir}/${prefix}test.${tgt_lang} 
 #    
-#            # convert to n-best format 
-#            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
-#                $o/$resdir/${prefix}test.${tgt_lang}  $o/$resdir/${prefix}test.nbest.${tgt_lang}
+#            ## convert to n-best format 
+#            #python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py  convert_to_nbest_format  \
+#            #    $o/$resdir/${prefix}test.${tgt_lang}  $o/$resdir/${prefix}test.nbest.${tgt_lang}
 #            
 #            # generate NEWS 2015 evaluation format output file 
 #            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
 #                    "$ref_dir/$src_lang-$tgt_lang/test.id" \
 #                    "$ref_dir/$src_lang-$tgt_lang/test.xml" \
-#                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}" \
+#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
 #                    "$o/$resdir/${prefix}test.nbest.${tgt_lang}.xml" \
 #                    "system" "conll2016" "$src_lang" "$tgt_lang"  
 #            
@@ -350,3 +350,14 @@ done
 #
 #
 #done 
+
+#python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
+#    --lang_pair hi-kn \
+#    --data_dir  /home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16/hi-kn/ \
+#    --representation onehot \
+#    --beam_size 5 \
+#    --model_fname /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16/1_3_cnnencoder_dropout/onehot/hi-kn/final_model_epochs_49 \
+#    --in_fname /home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16/hi-kn/test/hi-kn \
+#    --out_fname ~/tmp/testout-5.kn
+#
+#
