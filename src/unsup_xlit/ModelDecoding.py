@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import codecs
+import itertools as it
 
 import AttentionModel
 import Mapping
@@ -30,7 +31,7 @@ if __name__ == '__main__' :
     parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic", "onehot", "onehot_and_phonetic"')
 
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
-    parser.add_argument('--beam_size', type = int, default = 2, help = 'beam size for decoding')
+    parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
 
     parser.add_argument('--lang_pair', type = str, help = 'language pair for decoding: "lang1-lang2"')
 
@@ -121,6 +122,7 @@ if __name__ == '__main__' :
     with codecs.open(out_fname,'w','utf-8') as outfile: 
         for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
             for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
-                sent=mapping.get_word_from_ids(predicted_sequence_ids,target_lang)
+                sent=[mapping.get_char(x,target_lang) for x in predicted_sequence_ids]
+                sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
                 outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 

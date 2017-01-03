@@ -29,14 +29,17 @@ if __name__ == '__main__' :
     # Creating parser
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type = int, default = 64, help = 'size of each batch used in training')
-    parser.add_argument('--max_epochs', type = int, default = 32, help = 'maximum number of epochs')
+    parser.add_argument('--max_epochs', type = int, default = 64, help = 'maximum number of epochs')
     parser.add_argument('--learning_rate', type = float, default = 0.001, help = 'learning rate of Adam Optimizer')
     parser.add_argument('--dropout_keep_prob', type = float, default = 0.5, help = 'keep probablity for the dropout layers')
-    parser.add_argument('--max_seq_length', type = int, default = 50, help = 'maximum sequence length')
+    parser.add_argument('--max_seq_length', type = int, default = 30, help = 'maximum sequence length')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation and RNN')
     parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic", "onehot", "onehot_and_phonetic"')
+
+    parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
+    parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
 
     parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
     parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
@@ -68,6 +71,9 @@ if __name__ == '__main__' :
 
     embedding_size = args.embedding_size
     representation = args.representation
+
+    beam_size_val= args.beam_size
+    topn_val = args.topn
 
     train_mode = args.train_mode
     train_bidirectional = args.train_bidirectional 
@@ -193,6 +199,9 @@ if __name__ == '__main__' :
     batch_sequence_lengths_2 = tf.placeholder(shape=[None],dtype=tf.float32)
     
     dropout_keep_prob_var = tf.placeholder(dtype=tf.float32)
+
+    beam_size = tf.placeholder(dtype=tf.int32)
+    topn = tf.placeholder(dtype=tf.int32)
     
     # Optimizers for training using monolingual data
     # Has only one optimizer which minimizes loss of sequence reconstruction
@@ -277,8 +286,10 @@ if __name__ == '__main__' :
 
     # Predict output for test sequences
     infer_output = dict()
+    infer_output_scores = dict()
     for lang_pair in test_langs:
-        infer_output[lang_pair] = model.transliterate(lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1])
+        infer_output[lang_pair], infer_output_scores[lang_pair] =  \
+            model.transliterate_beam(lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size,topn)
 
     # All training dataset
     training_langs = mono_langs+parallel_train_langs
@@ -294,7 +305,9 @@ if __name__ == '__main__' :
     print "Done with creating graph. Starting session"
 
     #Start Session
-    sess = tf.Session()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
     sess.run(tf.initialize_all_variables())
     if(start_from is not None):
         saver.restore(sess,'{}/final_model_epochs_{}'.format(output_dir,start_from))
@@ -355,11 +368,12 @@ if __name__ == '__main__' :
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Validation loss: "+str(validation_loss)
             sys.stdout.flush()
 
-            # If validation loss is increasing since last 3 epochs, take the last 4th model and stop training process
-            if(completed_epochs>=4 and len(validation_losses)>=4 and all([i>j for (i,j) in zip(validation_losses[-3:],validation_losses[-4:-1])])):
-                completed_epochs -= 3
-                saver.restore(sess,temp_model_output_dir+'my_model-'+str(completed_epochs))
-                cont = False
+            #### Comment it to avoid early stopping
+            ## If validation loss is increasing since last 3 epochs, take the last 4th model and stop training process
+            #if(completed_epochs>=4 and len(validation_losses)>=4 and all([i>j for (i,j) in zip(validation_losses[-3:],validation_losses[-4:-1])])):
+            #    completed_epochs -= 3
+            #    saver.restore(sess,temp_model_output_dir+'my_model-'+str(completed_epochs))
+            #    cont = False
 
             # If max_epochs are done
             if(completed_epochs >= max_epochs):
@@ -377,10 +391,16 @@ if __name__ == '__main__' :
                     source_lang = lang_pair[0]
                     target_lang = lang_pair[1]
                     sequences, _, sequence_lengths = test_data[lang_pair].get_data()
-                    predicted_sequences_ids = sess.run(infer_output[lang_pair], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths})
-                    predicted_sequences = mapping.get_words_from_id_lists(predicted_sequences_ids,target_lang)
+                    predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
                     if completed_epochs % infer_every == 0:
-                        codecs.open(out_folder+str(completed_epochs).zfill(3)+source_lang+'-'+target_lang+'_','w','utf-8').write(u'\n'.join(predicted_sequences))
+                        #codecs.open(out_folder+str(completed_epochs).zfill(3)+source_lang+'-'+target_lang+'_','w','utf-8').write(u'\n'.join(predicted_sequences))
+                        out_fname=out_folder+str(completed_epochs).zfill(3)+'test.nbest.'+source_lang+'-'+target_lang+'.'+target_lang
+                        with codecs.open(out_fname,'w','utf-8') as outfile: 
+                            for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
+                                for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
+                                    sent=[mapping.get_char(x,target_lang) for x in predicted_sequence_ids]
+                                    sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
+                                    outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 
             # Save current model
             if(cont == True):
