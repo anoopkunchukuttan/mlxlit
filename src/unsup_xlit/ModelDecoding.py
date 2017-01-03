@@ -29,6 +29,9 @@ if __name__ == '__main__' :
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation and RNN')
     parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic", "onehot", "onehot_and_phonetic"')
 
+    parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
+    parser.add_argument('--beam_size', type = int, default = 2, help = 'beam size for decoding')
+
     parser.add_argument('--lang_pair', type = str, help = 'language pair for decoding: "lang1-lang2"')
 
     parser.add_argument('--data_dir', type = str, help = 'data directory')
@@ -48,6 +51,9 @@ if __name__ == '__main__' :
 
     embedding_size = args.embedding_size
     representation = args.representation
+
+    beam_size_val= args.beam_size
+    topn_val = args.topn
 
     data_dir = args.data_dir
     model_fname=args.model_fname
@@ -88,9 +94,11 @@ if __name__ == '__main__' :
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
     batch_sequence_masks = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
     batch_sequence_lengths = tf.placeholder(shape=[None],dtype=tf.float32)
+    beam_size = tf.placeholder(dtype=tf.int32)
+    topn = tf.placeholder(dtype=tf.int32)
 
     # Predict output for test sequences
-    infer_output = model.transliterate(lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1])
+    outputs, outputs_scores = model.transliterate_beam(lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size, topn)
 
     #Saving model
     saver = tf.train.Saver(max_to_keep = 3)
@@ -108,7 +116,11 @@ if __name__ == '__main__' :
     source_lang = lang_pair[0]
     target_lang = lang_pair[1]
     sequences, _, sequence_lengths = test_data.get_data()
-    predicted_sequences_ids = sess.run(infer_output, feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths})
-    predicted_sequences = mapping.get_words_from_id_lists(predicted_sequences_ids,target_lang)
-    codecs.open(out_fname,'w','utf-8').write(u'\n'.join(predicted_sequences))
+    predicted_sequences_ids, predicted_scores = sess.run([outputs, outputs_scores], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
+
+    with codecs.open(out_fname,'w','utf-8') as outfile: 
+        for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
+            for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
+                sent=mapping.get_word_from_ids(predicted_sequence_ids,target_lang)
+                outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 
