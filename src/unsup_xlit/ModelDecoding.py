@@ -108,7 +108,9 @@ if __name__ == '__main__' :
     print "Done with creating graph. Starting session"
 
     #Start Session
-    sess = tf.Session()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
     sess.run(tf.initialize_all_variables())
     saver.restore(sess,model_fname)
     
