@@ -7,11 +7,12 @@ from tensorflow.python.ops import rnn, rnn_cell
 
 # Do something with output folder
 class AttentionModel():
-    def __init__(self,mapping,representation,embedding_size,rnn_size,max_sequence_length):
+    def __init__(self,mapping,representation,max_sequence_length,embedding_size,enc_rnn_size,dec_rnn_size):
         ## FIXME: need better variable initialziations,  reproducible of results
         self.embedding_size = embedding_size
         self.mapping = mapping
-        self.rnn_size = rnn_size
+        self.enc_rnn_size = enc_rnn_size
+        self.dec_rnn_size = dec_rnn_size
         self.max_sequence_length = max_sequence_length
         self.representation=representation
 
@@ -35,11 +36,11 @@ class AttentionModel():
         ##### Create Encoder
 
         ## Bidirectional RNN encoder 
-        #self.input_encoder=encoders.BidirectionalRnnEncoder(embedding_size,max_sequence_length,rnn_size)
+        #self.input_encoder=encoders.BidirectionalRnnEncoder(embedding_size,max_sequence_length,enc_rnn_size)
 
         ## CNN Encoder
         filter_sizes=[1,2,3,4]
-        self.input_encoder=encoders.CNNEncoder(embedding_size,max_sequence_length,filter_sizes,rnn_size*2/len(filter_sizes))
+        self.input_encoder=encoders.CNNEncoder(embedding_size,max_sequence_length,filter_sizes,enc_rnn_size*2/len(filter_sizes))
 
         ## FIXME: what is the best way to initialize the input - I suppose with embedding for GO symbol
         ## the variable need not even be saved
@@ -47,17 +48,26 @@ class AttentionModel():
         #for lang in self.lang_list:
         #    self.decoder_input[lang] = tf.random_uniform([1, embedding_size], dtype = tf.float32)
 
+        ### Create Decoder
+
         self.decoder_cell = dict()
         with tf.variable_scope('decoder'):
             for lang in self.lang_list:
-                self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(rnn_size)
+                self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
             self.dec_state_size=self.decoder_cell.values()[0].state_size
+       
+        ### Encoder state to decoder adapter 
+        self.state_adapt_W = tf.Variable(tf.random_uniform([self.input_encoder.get_state_size(),self.dec_state_size],
+            -1*max_val, max_val), name = 'state_adapt_W')
+        self.state_adapt_b = tf.Variable(tf.constant(0., shape=[self.dec_state_size]), name = 'state_adapt_b')
+
+        ### Output layer
 
         # Output decoder to vocab_size vector
         self.out_W = dict()
         self.out_b = dict()
         for lang in self.lang_list:
-            self.out_W[lang] = tf.Variable(tf.random_uniform([self.rnn_size,self.vocab_size], -1*max_val, max_val),
+            self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size], -1*max_val, max_val),
                                             name='out_W_{}'.format(lang))
             self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]),
                                             name='out_b_{}'.format(lang))
@@ -166,7 +176,7 @@ class AttentionModel():
 
         batch_size = tf.shape(target_sequence)[0]
 
-        state = initial_state
+        state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
 
         loss = 0.0
         cell = rnn_cell.DropoutWrapper(self.decoder_cell[lang],output_keep_prob=dropout_keep_prob)
@@ -313,7 +323,7 @@ class AttentionModel():
 
         batch_size = tf.shape(sequences)[0]
         initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang,tf.constant(1.0))
-        state = initial_state
+        state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
         outputs=[]
 
         cell = rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
@@ -355,6 +365,7 @@ class AttentionModel():
 
         #### compute hidden representation first     
         initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang,tf.constant(1.0))
+        initial_state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
 
         ### start decoding 
 

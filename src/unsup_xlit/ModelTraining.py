@@ -36,7 +36,8 @@ if __name__ == '__main__' :
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
-    parser.add_argument('--rnn_size', type = int, default = 256, help = 'size of output layer of RNN')
+    parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
+    parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
     parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic", "onehot", "onehot_and_phonetic"')
 
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
@@ -71,7 +72,8 @@ if __name__ == '__main__' :
     dropout_keep_prob_val = args.dropout_keep_prob
 
     embedding_size = args.embedding_size
-    rnn_size = args.rnn_size
+    enc_rnn_size = args.enc_rnn_size
+    dec_rnn_size = args.dec_rnn_size
     representation = args.representation
 
     beam_size_val= args.beam_size
@@ -187,7 +189,7 @@ if __name__ == '__main__' :
     ###################################################################
 
     # Creating Model object
-    model = AttentionModel.AttentionModel(mapping,representation,embedding_size,rnn_size,max_sequence_length) # Pass parameters
+    model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,embedding_size,enc_rnn_size,dec_rnn_size) # Pass parameters
 
     ## Creating placeholder for sequences, masks and lengths and dropout keep probability 
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
