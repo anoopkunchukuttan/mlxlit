@@ -7,8 +7,9 @@ from tensorflow.python.ops import rnn, rnn_cell
 
 # Do something with output folder
 class AttentionModel():
+
     def __init__(self,mapping,representation,max_sequence_length,embedding_size,enc_rnn_size,dec_rnn_size):
-        ## FIXME: need better variable initialziations,  reproducible of results
+
         self.embedding_size = embedding_size
         self.mapping = mapping
         self.enc_rnn_size = enc_rnn_size
@@ -16,22 +17,42 @@ class AttentionModel():
         self.max_sequence_length = max_sequence_length
         self.representation=representation
 
-        self.lang_list = self.mapping.get_langs()
-        self.vocab_size = self.mapping.get_vocab_size()
+        self.lang_list = self.mapping.keys()
 
+        self.vocab_size={}
+        for lang in self.lang_list: 
+            self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
+    
         # Finds bit-vector representation for each character of each language
         self.bitvector_embeddings={}
+        self.bitvector_embedding_size={}
         for lang in self.lang_list:
-            self.bitvector_embeddings[lang] = tf.constant(self.mapping.get_bitvector_embeddings(lang,self.representation),dtype=tf.float32)
-        self.bitvector_embedding_size=self.mapping.get_bitvector_embedding_size(self.representation)
+            self.bitvector_embeddings[lang] = tf.constant(self.mapping[lang].get_bitvector_embeddings(lang,self.representation[lang]),dtype=tf.float32)
+            self.bitvector_embedding_size[lang]=self.mapping[lang].get_bitvector_embedding_size(self.representation[lang])
 
         # Converting the character representation to embedding_size vector
         max_val = 0.1
-        self.embed_W0 = tf.Variable(tf.random_uniform([self.bitvector_embedding_size,self.embedding_size], -1*max_val, max_val), name = 'embed_W0')
+
+        self.embed_W0=None
+        self.embed_b0=None
+
         self.embed_W = dict()
+        self.embed_b = dict()
+
         for lang in self.lang_list:
-            self.embed_W[lang] = tf.matmul(self.bitvector_embeddings[lang], self.embed_W0, name='embed_W_{}'.format(lang))
-        self.embed_b = tf.Variable(tf.constant(0., shape=[embedding_size]), name = 'embed_b')
+            if self.representation[lang] in  ['phonetic','onehot_and_phonetic']:
+                if self.embed_W0 is None: 
+                    self.embed_W0 = tf.Variable(tf.random_uniform([self.bitvector_embedding_size[lang],self.embedding_size], -1*max_val, max_val), name = 'embed_W0')
+                    self.embed_b0 = tf.Variable(tf.constant(0., shape=[self.embedding_size]), name = 'embed_b0')
+
+                self.embed_W[lang] = tf.matmul(self.bitvector_embeddings[lang], self.embed_W0, name='embed_W_{}'.format(lang))
+                self.embed_b[lang] = self.embed_b0
+            elif self.representation[lang] ==  'onehot':
+                ### TODO: maybe multiplication by identity bitvector embedding is not required
+                x = tf.Variable(tf.random_uniform([self.bitvector_embedding_size[lang],self.embedding_size], -1*max_val, max_val))
+                self.embed_W[lang] = tf.matmul(self.bitvector_embeddings[lang], x, name='embed_W_{}'.format(lang))
+                self.embed_b[lang] = tf.Variable(tf.constant(0., shape=[self.embedding_size]), name = 'embed_b_{}'.format(lang))
+
 
         ##### Create Encoder
 
@@ -52,7 +73,7 @@ class AttentionModel():
 
         self.decoder_cell = dict()
         with tf.variable_scope('decoder'):
-            for lang in self.lang_list:
+            for lang in self.lang_list:  ## TODO: can we restrict which languages decoder is created for?
                 self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
             self.dec_state_size=self.decoder_cell.values()[0].state_size
        
@@ -67,9 +88,9 @@ class AttentionModel():
         self.out_W = dict()
         self.out_b = dict()
         for lang in self.lang_list:
-            self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size], -1*max_val, max_val),
+            self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size[lang]], -1*max_val, max_val),
                                             name='out_W_{}'.format(lang))
-            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size]),
+            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size[lang]]),
                                             name='out_b_{}'.format(lang))
 
         ## Attention mechanism paramters
@@ -83,7 +104,7 @@ class AttentionModel():
 
     ## Given sequences of char_ids, compute hidden representation of each sequence
     def compute_hidden_representation(self, sequences, sequence_lengths, lang,dropout_keep_prob):
-        sequence_embeddings = tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b)
+        sequence_embeddings = tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b[lang])
         states, enc_outputs = self.input_encoder.encode(sequence_embeddings,sequence_lengths,dropout_keep_prob)
         return states, enc_outputs
 
@@ -188,11 +209,11 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                        tf.nn.embedding_lookup(self.embed_W[lang],self.mapping[lang].get_index(Mapping.Mapping.GO))+self.embed_b[lang],
                         0) # FIXME: why is this addition required?
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b  ##FIXME: why is this addition needed
+                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b[lang]  ##FIXME: why is this addition needed
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector using the attention mechanism
@@ -210,7 +231,7 @@ class AttentionModel():
             labels = tf.expand_dims(target_sequence[:,i],1)
             indices = tf.expand_dims(tf.range(0,batch_size),1)
             concated = tf.concat(1,[indices,labels])
-            onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size]),1.0,0.0)
+            onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size[lang]]),1.0,0.0)
 
             # Find probabilities of character
             logit_words = tf.matmul(output,self.out_W[lang])+self.out_b[lang]
@@ -332,11 +353,11 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_b[target_lang],
                         0) # FIXME: why is this addition required?
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b # FIXME: why is this addition required?
+                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b[target_lang] # FIXME: why is this addition required?
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
@@ -388,11 +409,11 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping.get_index(Mapping.Mapping.GO))+self.embed_b,
+                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_b[target_lang],
                         0) # FIXME: why is this addition required?
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],tf.reshape(prev_symbols,[-1]))+self.embed_b # FIXME: why is this addition required?
+                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],tf.reshape(prev_symbols,[-1]))+self.embed_b[target_lang] # FIXME: why is this addition required?
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
@@ -413,12 +434,12 @@ class AttentionModel():
             ### check dimentionality and orientation 
             prev_scores = prev_scores + tf.nn.log_softmax(logit_words)   ## TODO: this log sum is incorrect
 
-            prev_scores_by_instance = tf.reshape(prev_scores,[-1,cur_beam_size*self.vocab_size])
+            prev_scores_by_instance = tf.reshape(prev_scores,[-1,cur_beam_size*self.vocab_size[target_lang]])
 
             best_scores, best_indices = tf.nn.top_k(prev_scores_by_instance, beam_size)
 
-            best_symbols = best_indices % self.vocab_size 
-            best_prev_beams = best_indices // self.vocab_size 
+            best_symbols = best_indices % self.vocab_size[target_lang] 
+            best_prev_beams = best_indices // self.vocab_size[target_lang] 
 
             best_flat_indices = tf.tile(tf.reshape(tf.range(0,batch_size),[-1,1]),[1,cur_beam_size])*cur_beam_size + best_prev_beams
 
@@ -449,8 +470,8 @@ class AttentionModel():
             if i==self.max_sequence_length-1: 
                 final_scores, final_indices = tf.nn.top_k(prev_scores_by_instance, topn)
 
-                final_symbols    = final_indices %  self.vocab_size 
-                final_prev_beams = final_indices // self.vocab_size 
+                final_symbols    = final_indices %  self.vocab_size[target_lang] 
+                final_prev_beams = final_indices // self.vocab_size[target_lang] 
 
                 final_flat_indices = tf.tile(tf.reshape(tf.range(0,batch_size),[-1,1]),[1,topn])*beam_size + final_prev_beams
 

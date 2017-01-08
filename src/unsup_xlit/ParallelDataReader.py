@@ -47,7 +47,7 @@ class ParallelDataReader():
                 file_read = map(lambda x: x+[u'PAD']*(self.max_sequence_length-len(x)),file_read)
 
                 # replacing character with corresponding character id
-                self.sequences[lang] = np.array([[self.mapping.get_index(char,lang) for char in word] for word in file_read], dtype = np.int32)
+                self.sequences[lang] = np.array([[self.mapping[lang].get_index(char,lang) for char in word] for word in file_read], dtype = np.int32)
 
                 # Creating masks. Mask has size = size of list of sequence. 
                 # Corresponding to each PAD character there is a zero, for all other there is a 1

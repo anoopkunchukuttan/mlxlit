@@ -53,7 +53,7 @@ if __name__ == '__main__' :
     max_sequence_length = args.max_seq_length
 
     embedding_size = args.embedding_size
-    representation = args.representation
+    representation = None
     enc_rnn_size = args.enc_rnn_size
     dec_rnn_size = args.dec_rnn_size
 
@@ -72,8 +72,23 @@ if __name__ == '__main__' :
     # Reading data and creating mappings  #
     #######################################
 
+    ### parse representation argument 
+    if args.representation in ['onehot','phonetic','onehot_and_phonetic']: 
+        representation = {} 
+        for lang in lang_pair: 
+            representation[lang]=args.representation 
+    else: 
+        representation = dict([ x.split(':') for x in args.representation.split(',') ])
+
     # Creating mapping object to store char-id mappings
-    mapping = Mapping.Mapping()
+    mapping={}
+    phonetic_mapping = Mapping.IndicPhoneticMapping()
+
+    for lang in lang_pair: 
+        if representation[lang] in ['phonetic','onehot_and_phonetic']: 
+            mapping[lang]=phonetic_mapping 
+        elif representation[lang]=='onehot': 
+            mapping[lang]=Mapping.CharacterMapping()
 
     # Reading Parallel Training data
     ### TODO this is need only because vocabulary has to be restored. Need to save vocabulary too
@@ -83,10 +98,11 @@ if __name__ == '__main__' :
         file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
 
     ## complete vocabulary creation
-    mapping.finalize_vocab()
+    for lang in lang_pair:
+        mapping[lang].finalize_vocab()
 
     # Reading Test data
-    test_data = MonoDataReader.MonoDataReader(lang_pair[0], in_fname,mapping,max_sequence_length)
+    test_data = MonoDataReader.MonoDataReader(lang_pair[0], in_fname,mapping[lang],max_sequence_length)
 
     ###################################################################
     #    Interacting with model and creating computation graph        #
@@ -128,7 +144,7 @@ if __name__ == '__main__' :
     with codecs.open(out_fname,'w','utf-8') as outfile: 
         for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
             for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
-                sent=[mapping.get_char(x,target_lang) for x in predicted_sequence_ids]
+                sent=[mapping[target_lang].get_char(x,target_lang) for x in predicted_sequence_ids]
                 sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
                 outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 

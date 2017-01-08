@@ -38,7 +38,9 @@ if __name__ == '__main__' :
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
     parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
     parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
-    parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, one of "phonetic", "onehot", "onehot_and_phonetic"')
+
+    parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
+
 
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
     parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
@@ -74,7 +76,7 @@ if __name__ == '__main__' :
     embedding_size = args.embedding_size
     enc_rnn_size = args.enc_rnn_size
     dec_rnn_size = args.dec_rnn_size
-    representation = args.representation
+    representation = None
 
     beam_size_val= args.beam_size
     topn_val = args.topn
@@ -103,23 +105,26 @@ if __name__ == '__main__' :
     parallel_train_langs=None
     parallel_valid_langs=None
     test_langs=None
-
+    all_langs=None
 
     if train_mode=='unsup':
         parallel_train_langs=[]
         mono_langs=args.langs.split(',')
         parallel_valid_langs=list(it.combinations(mono_langs,2))
         test_langs = list(it.permutations(mono_langs,2))
+        all_langs=mono_langs 
 
     elif train_mode=='sup':
 
         parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
         parallel_valid_langs=parallel_train_langs
 
+        mll=set()
+        for lp in [list(x) for x in parallel_train_langs]: 
+            mll.update(lp)
+        all_langs=list(mll)
+
         if use_monolingual:             
-            mll=set()
-            for lp in [list(x) for x in parallel_train_langs]: 
-                mll.update(lp)
             mono_langs=list(mll)                
 
             ### NOTE: temporary - use only source for monolingual optimization (works only for a single pair)
@@ -132,11 +137,12 @@ if __name__ == '__main__' :
         else: 
             test_langs=parallel_train_langs 
 
-    print 'Parallel Train, Mono, Parallel Valid, Test Langs'
+    print 'Parallel Train, Mono, Parallel Valid, Test Langs, All Langs'
     print parallel_train_langs
     print mono_langs
     print parallel_valid_langs
     print test_langs
+    print all_langs 
 
     # Create output folders if required
     temp_model_output_dir = output_dir+'/temp_models/'
@@ -152,13 +158,37 @@ if __name__ == '__main__' :
     # Reading data and creating mappings  #
     #######################################
 
+    ### parse representation argument 
+    if args.representation in ['onehot','phonetic','onehot_and_phonetic']: 
+        representation = {} 
+        for lang in all_langs: 
+            representation[lang]=args.representation 
+    else: 
+        representation = dict([ x.split(':') for x in args.representation.split(',') ])
+
     # Creating mapping object to store char-id mappings
-    mapping = Mapping.Mapping()
+    mapping={}
+    phonetic_mapping = Mapping.IndicPhonetic2Mapping()
+
+    for lang in all_langs: 
+        if representation[lang] in ['phonetic','onehot_and_phonetic']: 
+            mapping[lang]=phonetic_mapping 
+        elif representation[lang]=='onehot': 
+            mapping[lang]=Mapping.CharacterMapping()
+
+    ## Print Representation and Mappings 
+    print 'Represenation'
+    print representation 
+
+    print 'Mapping'
+    print mapping
+
+    print 'Start Reading Data'
 
     # Reading Monolingual Training data
     mono_train_data = dict()
     for lang in mono_langs:
-        mono_train_data[lang] = MonoDataReader.MonoDataReader(lang,data_dir+'/mono_train/'+lang,mapping,max_sequence_length)
+        mono_train_data[lang] = MonoDataReader.MonoDataReader(lang,data_dir+'/mono_train/'+lang,mapping[lang],max_sequence_length)
 
     # Reading Parallel Training data
     parallel_train_data = dict()
@@ -168,7 +198,12 @@ if __name__ == '__main__' :
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
 
     ## complete vocabulary creation
-    mapping.finalize_vocab()
+    for lang in all_langs: 
+        mapping[lang].finalize_vocab()
+
+    print 'Vocabulary Statitics'
+    for lang in all_langs: 
+        print '{}: {}'.format(lang,mapping[lang].get_vocab_size())
 
     # Reading parallel Validation data
     parallel_valid_data = dict()
@@ -182,7 +217,9 @@ if __name__ == '__main__' :
     for lang_pair in test_langs:
         file_name = data_dir+'/test/'+lang_pair[0]+'-'+lang_pair[1]
         test_data[lang_pair] = MonoDataReader.MonoDataReader(lang_pair[0],
-            file_name,mapping,max_sequence_length)
+            file_name,mapping[lang],max_sequence_length)
+
+    print 'Stop Reading Data' 
 
     ###################################################################
     #    Interacting with model and creating computation graph        #
@@ -400,7 +437,7 @@ if __name__ == '__main__' :
                         with codecs.open(out_fname,'w','utf-8') as outfile: 
                             for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
                                 for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
-                                    sent=[mapping.get_char(x,target_lang) for x in predicted_sequence_ids]
+                                    sent=[mapping[target_lang].get_char(x,target_lang) for x in predicted_sequence_ids]
                                     sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
                                     outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 
