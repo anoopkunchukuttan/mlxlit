@@ -47,7 +47,7 @@ class Mapping():
     def get_words_from_id_lists(self,sequences,lang):
             return [self.get_word_from_ids(sequence, lang) for sequence in sequences]
 
-class IndicPhoneticMapping(Mapping):
+class IndicPhonetic2Mapping(Mapping):
 
     def __init__(self): 
 
@@ -163,7 +163,7 @@ class IndicPhoneticMapping(Mapping):
         elif representation=='onehot_and_phonetic': 
             return self.get_onehot_phonetic_bitvector_embeddings(lang)
 
-class IndicPhonetic2Mapping(Mapping):
+class IndicPhoneticMapping(Mapping):
 
     def __init__(self): 
 

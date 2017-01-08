@@ -28,6 +28,13 @@ if __name__ == '__main__' :
 
     # Creating parser
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('--data_dir', type = str, help = 'data directory')
+    parser.add_argument('--output_dir', type = str, help = 'output folder name')
+
+    parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
+    parser.add_argument('--langs', type = str, default = None, help = 'List of language for unsupervised training given as: "lang1,lang2,lang3,lang4,..."')
+
     parser.add_argument('--batch_size', type = int, default = 64, help = 'size of each batch used in training')
     parser.add_argument('--max_epochs', type = int, default = 64, help = 'maximum number of epochs')
     parser.add_argument('--learning_rate', type = float, default = 0.001, help = 'learning rate of Adam Optimizer')
@@ -39,11 +46,12 @@ if __name__ == '__main__' :
     parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
     parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
 
-    parser.add_argument('--representation', type = str, default = 'phonetic',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
-
-
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
     parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
+
+    parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the final epochs from previous runs')
+
+    parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
 
     parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
     parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
@@ -51,12 +59,7 @@ if __name__ == '__main__' :
     parser.add_argument('--which_mono', type = int, default = -100, help = 'which monolingual to use (hack code, may not work - must be commented)')
 
     parser.add_argument('--train_size', type = int, default = -1, help = 'Size of the parallel training set to use for all language pairs (not implemented yet)')
-    parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
-    parser.add_argument('--langs', type = str, default = None, help = 'List of language for unsupervised training given as: "lang1,lang2,lang3,lang4,..."')
 
-    parser.add_argument('--data_dir', type = str, help = 'data directory')
-    parser.add_argument('--output_dir', type = str, help = 'output folder name')
-    parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the final epochs from previous runs')
 
     args = parser.parse_args()
 
@@ -168,7 +171,7 @@ if __name__ == '__main__' :
 
     # Creating mapping object to store char-id mappings
     mapping={}
-    phonetic_mapping = Mapping.IndicPhonetic2Mapping()
+    phonetic_mapping = Mapping.IndicPhoneticMapping()
 
     for lang in all_langs: 
         if representation[lang] in ['phonetic','onehot_and_phonetic']: 
