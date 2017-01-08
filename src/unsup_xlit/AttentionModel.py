@@ -8,14 +8,16 @@ from tensorflow.python.ops import rnn, rnn_cell
 # Do something with output folder
 class AttentionModel():
 
-    def __init__(self,mapping,representation,max_sequence_length,embedding_size,enc_rnn_size,dec_rnn_size):
+    def __init__(self,mapping,representation,max_sequence_length,enc_type,embedding_size,enc_rnn_size,dec_rnn_size):
+
+        self.mapping = mapping
+        self.representation=representation
+        self.max_sequence_length = max_sequence_length
+        self.enc_type = enc_type 
 
         self.embedding_size = embedding_size
-        self.mapping = mapping
         self.enc_rnn_size = enc_rnn_size
         self.dec_rnn_size = dec_rnn_size
-        self.max_sequence_length = max_sequence_length
-        self.representation=representation
 
         self.lang_list = self.mapping.keys()
 
@@ -55,13 +57,18 @@ class AttentionModel():
 
 
         ##### Create Encoder
-
-        ## Bidirectional RNN encoder 
-        #self.input_encoder=encoders.BidirectionalRnnEncoder(embedding_size,max_sequence_length,enc_rnn_size)
-
-        ## CNN Encoder
-        filter_sizes=[1,2,3,4]
-        self.input_encoder=encoders.CNNEncoder(embedding_size,max_sequence_length,filter_sizes,enc_rnn_size*2/len(filter_sizes))
+        self.input_encoder=None
+        
+        if self.enc_type == 'simple_lstm_noattn':
+            ## Simple RNN Encoder 
+            self.input_encoder=encoders.SimpleRnnEncoder(embedding_size,max_sequence_length,enc_rnn_size)
+        elif self.enc_type == 'bilstm':
+            ### Bidirectional RNN encoder 
+            self.input_encoder=encoders.BidirectionalRnnEncoder(embedding_size,max_sequence_length,enc_rnn_size)
+        elif self.enc_type == 'cnn':
+            ## CNN Encoder
+            filter_sizes=[1,2,3,4]
+            self.input_encoder=encoders.CNNEncoder(embedding_size,max_sequence_length,filter_sizes,enc_rnn_size*2/len(filter_sizes))
 
         ## FIXME: what is the best way to initialize the input - I suppose with embedding for GO symbol
         ## the variable need not even be saved
@@ -216,10 +223,14 @@ class AttentionModel():
                 current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b[lang] 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
-            ### compute the context vector using the attention mechanism
-            context=self.compute_attention_context(state,current_emb,enc_output)
-            current_input=tf.concat(1,[current_emb,context])
-            #current_input=current_emb
+            ### compute the context vector 
+            current_input=None
+            if self.enc_type=='simple_lstm_noattn':
+                current_input=current_emb
+            else: 
+                ## using the attention mechanism
+                context=self.compute_attention_context(state,current_emb,enc_output)
+                current_input=tf.concat(1,[current_emb,context])
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -361,10 +372,14 @@ class AttentionModel():
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
-            ### compute the context vector using the attention mechanism
-            context=self.compute_attention_context(state,current_emb,enc_output)
-            current_input=tf.concat(1,[current_emb,context])
-            #current_input=current_emb
+            ### compute the context vector 
+            current_input=None
+            if self.enc_type=='simple_lstm_noattn':
+                current_input=current_emb
+            else: 
+                ## using the attention mechanism
+                context=self.compute_attention_context(state,current_emb,enc_output)
+                current_input=tf.concat(1,[current_emb,context])
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -417,10 +432,14 @@ class AttentionModel():
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
-            ### compute the context vector using the attention mechanism
-            context=self.compute_attention_context(prev_states,current_emb,enc_output)
-            current_input=tf.concat(1,[current_emb,context])
-            #current_input=current_emb
+            ### compute the context vector 
+            current_input=None
+            if self.enc_type=='simple_lstm_noattn':
+                current_input=current_emb
+            else: 
+                ## using the attention mechanism
+                context=self.compute_attention_context(prev_states,current_emb,enc_output)
+                current_input=tf.concat(1,[current_emb,context])
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -432,7 +451,7 @@ class AttentionModel():
             logit_words = tf.add(tf.matmul(output,self.out_W[target_lang]),self.out_b[target_lang])
 
             ### check dimentionality and orientation 
-            prev_scores = prev_scores + tf.nn.log_softmax(logit_words)   ## TODO: this log sum is incorrect
+            prev_scores = prev_scores + tf.nn.log_softmax(logit_words)
 
             prev_scores_by_instance = tf.reshape(prev_scores,[-1,cur_beam_size*self.vocab_size[target_lang]])
 
