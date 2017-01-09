@@ -222,7 +222,7 @@ if __name__ == '__main__' :
     for lang_pair in test_langs:
         file_name = data_dir+'/test/'+lang_pair[0]+'-'+lang_pair[1]
         test_data[lang_pair] = MonoDataReader.MonoDataReader(lang_pair[0],
-            file_name,mapping[lang],max_sequence_length)
+            file_name,mapping[lang_pair[0]],max_sequence_length)
 
     print 'Stop Reading Data' 
 
