@@ -120,16 +120,19 @@ class AttentionModel():
         print 'start building attention context graph'
         batch_size=tf.shape(prev_state)[0]
 
-        ## getting prev_state and prev_out_embed in the correct shape
-        ## and duplicate them for cacatenating with enc_outputs
-        att_ref=tf.concat(1,[prev_state,prev_out_embed])
-        a1=tf.tile(att_ref,[1,self.max_sequence_length])
-        a2=tf.reshape(a1,[-1,self.dec_state_size+self.embedding_size],name='attn__a2__state__embed_shaped')
-
         ## reshaping and transposing enc_outputs
         a3=tf.pack(enc_outputs)
         a4=tf.transpose(a3,[1,0,2])
         a5=tf.reshape(a4,[-1,self.ctxvec_size],name='attn__a5__enc_outputs_shaped')
+
+        num_ctx_vec=self.max_sequence_length
+        #num_ctx_vec=tf.shape(a3)[0]
+
+        ## getting prev_state and prev_out_embed in the correct shape
+        ## and duplicate them for cacatenating with enc_outputs
+        att_ref=tf.concat(1,[prev_state,prev_out_embed])
+        a1=tf.tile(att_ref,[1,num_ctx_vec])
+        a2=tf.reshape(a1,[-1,self.dec_state_size+self.embedding_size],name='attn__a2__state__embed_shaped')
 
         ## preparing the input to the attention network
         a6=tf.concat(1,[a2,a5],name='attn__a6__network_input')
@@ -140,7 +143,7 @@ class AttentionModel():
 
         a7=tf.matmul(a6,self.attn_W)+self.attn_b
         a8=tf.nn.tanh(a7,name='attn__a7__network_output')
-        a9=tf.reshape(a8,[-1,self.max_sequence_length],name='attn__a9')
+        a9=tf.reshape(a8,[-1,num_ctx_vec],name='attn__a9')
 
         ## apply softmax to compute the weights for the encoder outputs
         a10=tf.nn.softmax(a9,name='attn__a10__softmax')
@@ -189,8 +192,8 @@ class AttentionModel():
 
         #### (e)  This method finally worked and it is so simple and elegant!
         def loop_func(batch_no):
-            a11=tf.slice(a10,[batch_no,0],[1,self.max_sequence_length])
-            a12=tf.slice(a5,[batch_no*self.max_sequence_length,0],[self.max_sequence_length,self.ctxvec_size])
+            a11=tf.slice(a10,[batch_no,0],[1,num_ctx_vec])
+            a12=tf.slice(a5,[batch_no*num_ctx_vec,0],[num_ctx_vec,self.ctxvec_size])
             return tf.matmul(a11,a12)
 
         a13=tf.map_fn(loop_func,tf.range(0,batch_size),dtype=tf.float32,parallel_iterations=100)
