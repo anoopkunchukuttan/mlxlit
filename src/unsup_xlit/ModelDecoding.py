@@ -3,6 +3,7 @@ import os
 import sys
 import codecs
 import itertools as it
+import pickle 
 
 import AttentionModel
 import Mapping
@@ -39,7 +40,7 @@ if __name__ == '__main__' :
 
     parser.add_argument('--lang_pair', type = str, help = 'language pair for decoding: "lang1-lang2"')
 
-    parser.add_argument('--data_dir', type = str, help = 'data directory')
+    #parser.add_argument('--data_dir', type = str, help = 'data directory')
     parser.add_argument('--model_fname', type = str, help = 'model file name')
     parser.add_argument('--mapping_fname', type = str, help = 'mapping file name')
     parser.add_argument('--in_fname', type = str, help = 'input file')
@@ -64,8 +65,9 @@ if __name__ == '__main__' :
     beam_size_val= args.beam_size
     topn_val = args.topn
 
-    data_dir = args.data_dir
+    #data_dir = args.data_dir
     model_fname=args.model_fname
+    mapping_fname = args.mapping_fname 
     in_fname=args.in_fname
     out_fname=args.out_fname
 
