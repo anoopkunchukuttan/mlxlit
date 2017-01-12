@@ -173,11 +173,14 @@ if __name__ == '__main__' :
 
     # Creating mapping object to store char-id mappings
     mapping={}
-    phonetic_mapping = Mapping.IndicPhoneticMapping()
+    shared_phonetic_mapping = Mapping.IndicPhoneticMapping()
+    shared_onehot_mapping = Mapping.IndicPhoneticMapping()
 
     for lang in all_langs: 
         if representation[lang] in ['phonetic','onehot_and_phonetic']: 
-            mapping[lang]=phonetic_mapping 
+            mapping[lang]=shared_phonetic_mapping 
+        elif representation[lang]=='onehot_shared': 
+            mapping[lang]=shared_onehot_mapping
         elif representation[lang]=='onehot': 
             mapping[lang]=Mapping.CharacterMapping()
 

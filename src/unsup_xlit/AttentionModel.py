@@ -42,7 +42,7 @@ class AttentionModel():
         self.embed_b = dict()
 
         for lang in self.lang_list:
-            if self.representation[lang] in  ['phonetic','onehot_and_phonetic']:
+            if self.representation[lang] in  ['phonetic','onehot_and_phonetic','onehot_shared']:
                 if self.embed_W0 is None: 
                     self.embed_W0 = tf.Variable(tf.random_uniform([self.bitvector_embedding_size[lang],self.embedding_size], -1*max_val, max_val), name = 'embed_W0')
                     self.embed_b0 = tf.Variable(tf.constant(0., shape=[self.embedding_size]), name = 'embed_b0')
