@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import codecs
+import pickle
 
 import Model
 import AttentionModel
@@ -164,12 +165,16 @@ if __name__ == '__main__' :
     #######################################
 
     ### parse representation argument 
-    if args.representation in ['onehot','phonetic','onehot_and_phonetic']: 
+    if args.representation in ['onehot','onehot_shared','phonetic','onehot_and_phonetic']: 
         representation = {} 
         for lang in all_langs: 
             representation[lang]=args.representation 
     else: 
         representation = dict([ x.split(':') for x in args.representation.split(',') ])
+
+    ## Print Representation and Mappings 
+    print 'Represenation'
+    print representation 
 
     # Creating mapping object to store char-id mappings
     mapping={}
@@ -185,9 +190,6 @@ if __name__ == '__main__' :
             mapping[lang]=Mapping.CharacterMapping()
 
     ## Print Representation and Mappings 
-    print 'Represenation'
-    print representation 
-
     print 'Mapping'
     print mapping
 
@@ -208,6 +210,10 @@ if __name__ == '__main__' :
     ## complete vocabulary creation
     for lang in all_langs: 
         mapping[lang].finalize_vocab()
+
+    ## save the mapping
+    with open(outputs_dir+'/mapping.pickle','w') as mapping_file:
+        pickle.dump(mapping,mapping_file)
 
     print 'Vocabulary Statitics'
     for lang in all_langs: 
@@ -346,7 +352,7 @@ if __name__ == '__main__' :
     completed_epochs = 0
 
     #Saving model
-    saver = tf.train.Saver(max_to_keep = 3)
+    saver = tf.train.Saver(max_to_keep = 0)
     final_saver = tf.train.Saver()
 
     print "Done with creating graph. Starting session"
@@ -451,8 +457,8 @@ if __name__ == '__main__' :
 
             # Save current model
             if(cont == True):
-                if(completed_epochs==1 or (len(validation_losses)>=2 and validation_losses[-1]<validation_losses[-2])):
-                    saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
+                #if(completed_epochs==1 or (len(validation_losses)>=2 and validation_losses[-1]<validation_losses[-2])):
+                saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
     # save final model
     final_saver.save(sess,output_dir+'/final_model_epochs_'+str(completed_epochs))
