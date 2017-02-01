@@ -7,9 +7,9 @@ export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src
 
 export CUDA_VISIBLE_DEVICES=1
 
-############################################################################################
-######################### supervised transliteration - multilingual #########################
 #############################################################################################
+########################## supervised transliteration - multilingual #########################
+##############################################################################################
 
 dataset='news_2015'
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
@@ -45,24 +45,24 @@ do
     ######## Experiment loop starts here ########
 
     #for representation in `echo onehot phonetic`
-    for representation in `echo phonetic`
+    for representation in `echo onehot`
     do 
 
-        ## for EN-INDIC
-        #src_lang='en'
-        #tgt_langs=(hi bn kn ta)
-        #multiconf=en-indic
-        #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
-        #representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-        # for EN-INDIC  (with hindi only monolingual for zeroshot training)
+        # for EN-INDIC
         src_lang='en'
-        tgt_langs=(bn kn ta)
-        all_langs=(hi bn kn ta)
+        tgt_langs=(hi bn kn ta)
         multiconf=en-indic
-        more_opts='--langs hi'
         lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
-        representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+        representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+
+        ## for EN-INDIC  (with hindi only monolingual for zeroshot training)
+        #src_lang='en'
+        #tgt_langs=(bn kn ta)
+        #all_langs=(hi bn kn ta)
+        #multiconf=en-indic
+        #more_opts='--langs hi'
+        #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
+        #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
 
         ### for INDIC-EN
         #tgt_lang='en'
@@ -70,6 +70,16 @@ do
         #multiconf=indic-en
         #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-en," ; done | sed 's/,$//g'`
         #representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+
+        ### for INDIC-EN (with hindi only monolingual for zeroshot training)
+        #tgt_lang='en'
+        #src_langs=(bn kn ta)
+        #all_langs=$src_langs
+        ##all_langs=(hi bn kn ta)
+        ##more_opts='--langs hi'
+        #multiconf=indic-en
+        #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-en," ; done | sed 's/,$//g'`
+        #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
 
         o=$output_dir/$expname/$representation/$multiconf
         
@@ -197,15 +207,15 @@ done
 ############################################################################################
 #################### EVALUATE SPECIFIC ITERATION #################
 ############################################################################################
-#
-#dataset='news_2015_reversed'
+
+#dataset='news_2015'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
-#for prefix in `echo  015 020`
+#for prefix in `echo  016`
 #do 
 #
-#for expname in `echo 1_test_2`
+#for expname in `echo 1_multilingual_zeroshot`
 #do 
 #
 #    ######## Experiment loop starts here ########
@@ -213,7 +223,7 @@ done
 #    #for langpair in `echo hi-kn bn-hi ta-kn`
 #    #for langpair in `echo en-hi en-bn en-ta en-kn`
 #    #for langpair in `echo hi-en bn-en ta-en kn-en`
-#    for langpair in `echo ta-en`
+#    for langpair in `echo en-bn en-ta en-kn`
 #    do
 #        src_lang=`echo $langpair | cut -f 1 -d '-'`
 #        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
@@ -223,10 +233,10 @@ done
 #        do 
 #            #### output directory to select 
 #            ### for bilingual experiments 
-#            o=$output_dir/$expname/$representation/$langpair
+#            #o=$output_dir/$expname/$representation/$langpair
 #
 #            ### for multilingual experiments  (en-indic)
-#            #o=$output_dir/$expname/$representation/en-indic
+#            o=$output_dir/$expname/$representation/en-indic
 #
 #            #### for multilingual experiments  (indic-en)
 #            #o=$output_dir/$expname/$representation/indic-en
@@ -420,6 +430,7 @@ done
 ########################################################################
 ################# Decoding #########################
 ########################################################################
+
 #python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
 #    --lang_pair hi-kn \
 #    --data_dir  /home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16/hi-kn/ \
@@ -428,5 +439,18 @@ done
 #    --model_fname /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16/1_test/onehot/hi-kn/final_model_epochs_64 \
 #    --in_fname /home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16/hi-kn/test/hi-kn \
 #    --out_fname ~/tmp/testout-5.kn
+#
+
+
+### for multilingual zeroshot training  (en-indic) with hindi as the missing language
+#python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
+#    --lang_pair en-hi \
+#    --data_dir  /home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16/hi-kn/ \
+#    --representation onehot \
+#    --beam_size 5 \
+#    --model_fname /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/conll16/1_test/onehot/hi-kn/final_model_epochs_64 \
+#    --in_fname /home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/conll16/hi-kn/test/hi-kn \
+#    --out_fname ~/tmp/testout-5.kn
+#
 #
 #
