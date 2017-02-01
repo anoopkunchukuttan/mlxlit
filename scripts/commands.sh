@@ -2,7 +2,7 @@
 
 export MLXLIT_BASE=/home/development/anoop/experiments/multilingual_unsup_xlit
 export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
-export XLIT_HOME=/home/development/anoop/experiments/unsupervised_transliterator/src/transliterator
+export XLIT_HOME=$MLXLIT_BASE/src/conll16_unsup_xlit
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
 export CUDA_VISIBLE_DEVICES=1
@@ -17,7 +17,7 @@ output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/s
 
 #restore_epoch_number="17"
 
-for expname in `echo 1_multilingual_zeroshot`
+for expname in `echo 1_multilingual_shared_decoder`
 do 
 
     exptype=`echo $expname | cut -f 1 -d '_'`
@@ -45,7 +45,7 @@ do
     ######## Experiment loop starts here ########
 
     #for representation in `echo onehot phonetic`
-    for representation in `echo onehot`
+    for representation in `echo phonetic`
     do 
 
         # for EN-INDIC
