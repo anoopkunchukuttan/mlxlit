@@ -80,8 +80,12 @@ class AttentionModel():
 
         self.decoder_cell = dict()
         with tf.variable_scope('decoder'):
+            shared_decoder=rnn_cell.BasicLSTMCell(dec_rnn_size)
             for lang in self.lang_list:  ## TODO: can we restrict which languages decoder is created for?
-                self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
+                #### decoder per language 
+                #self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
+                #### shared decoder
+                self.decoder_cell[lang] =  shared_decoder 
             self.dec_state_size=self.decoder_cell.values()[0].state_size
        
         ### Encoder state to decoder adapter 
