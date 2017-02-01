@@ -127,19 +127,21 @@ if __name__ == '__main__' :
         mll=set()
         for lp in [list(x) for x in parallel_train_langs]: 
             mll.update(lp)
-        #### this is to support monolingual training for any language (for multilingual setup)    
-        if args.lang_pairs is not None:     
-            mono_langs=args.langs.split(',')
-            mll.update(mono_langs)    
+
+        ##### TODO: uncomment this block for zeroshot. this is to support monolingual training for any language (for multilingual setup)    
+        #if args.lang_pairs is not None:     
+        #    mono_langs=args.langs.split(',')
+        #    mll.update(mono_langs)    
+
         all_langs=list(mll)
     
-        #if use_monolingual:             
-        #    mono_langs=list(mll)                
+        if use_monolingual:             
+            mono_langs=list(mll)                
 
-        #    ### NOTE: temporary - use only source for monolingual optimization (works only for a single pair)
-        #    #mono_langs=[parallel_train_langs[0][args.which_mono]]
-        #else:
-        #    mono_langs=[]
+            ### NOTE: temporary - use only source for monolingual optimization (works only for a single pair)
+            #mono_langs=[parallel_train_langs[0][args.which_mono]]
+        else:
+            mono_langs=[]
 
         if train_bidirectional:             
             test_langs= parallel_train_langs + [ tuple(reversed(x)) for x in parallel_train_langs ]
