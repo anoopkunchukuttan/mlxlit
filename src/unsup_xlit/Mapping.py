@@ -1,5 +1,6 @@
 from collections import defaultdict
 import numpy as np 
+import json
 
 from indicnlp.script import  indic_scripts as isc
 from indicnlp import langinfo as li
@@ -10,6 +11,12 @@ class Mapping():
     EOW=u'EOW'
     PAD=u'PAD'
     UNK=u'UNK'
+
+    def save_mapping(self,mapping_file): 
+        pass 
+
+    def load_mapping(self,mapping_file): 
+        pass 
 
     def finalize_vocab(self): 
         """
@@ -64,6 +71,20 @@ class Mapping():
 #        self.addvocab_c2i[Mapping.EOW]
 #        self.addvocab_c2i[Mapping.PAD]
 #        self.addvocab_c2i[Mapping.UNK]
+#
+#    def save_mapping(self,mapping_file): 
+#        dump_data={}
+#        dump_data['c2i']=self.addvocab_c2i
+#        dump_data['i2c']=self.addvocab_i2c
+#        dump_data['langs']=list(self.lang_list)
+#        json.dump(dump_data,mapping_file)
+#
+#    def load_mapping(self,mapping_file): 
+#        dump_data=json.load(mapping_file)
+#        self.addvocab_c2i=dump_data['c2i']
+#        self.addvocab_i2c=dump_data['i2c']
+#        self.lang_list=set(dump_data['langs'])
+#        self.update_mode=False
 #
 #    def finalize_vocab(self): 
 #        """
@@ -183,6 +204,23 @@ class IndicPhoneticMapping(Mapping):
         self.vocab_c2i[Mapping.PAD]
         self.vocab_c2i[Mapping.UNK]
 
+    def save_mapping(self,mapping_file): 
+        dump_data={}
+        dump_data['class']='IndicPhoneticMapping'
+        dump_data['c2i']=self.vocab_c2i
+        dump_data['i2c']=self.vocab_i2c
+        dump_data['i2pid']=self.indic_i2pid
+        dump_data['langs']=list(self.lang_list)
+        json.dump(dump_data,mapping_file)
+
+    def load_mapping(self,mapping_file): 
+        dump_data=json.load(mapping_file)
+        self.vocab_c2i=dump_data['c2i']
+        self.vocab_i2c=dump_data['i2c']
+        self.indic_i2pid=dump_data['i2pid']
+        self.lang_list=set(dump_data['langs'])
+        self.update_mode=False
+
     def finalize_vocab(self): 
         """
         Call after all vocabulary has been added via get_index
@@ -297,6 +335,20 @@ class CharacterMapping(Mapping):
         self.vocab_c2i[Mapping.EOW]
         self.vocab_c2i[Mapping.PAD]
         self.vocab_c2i[Mapping.UNK]
+
+    def save_mapping(self,mapping_file): 
+        dump_data={}
+        dump_data['c2i']=self.vocab_c2i
+        dump_data['i2c']=self.vocab_i2c
+        dump_data['langs']=list(self.lang_list)
+        json.dump(dump_data,mapping_file)
+
+    def load_mapping(self,mapping_file): 
+        dump_data=json.load(mapping_file)
+        self.vocab_c2i=dump_data['c2i']
+        self.vocab_i2c=dump_data['i2c']
+        self.lang_list=set(dump_data['langs'])
+        self.update_mode=False
 
     def finalize_vocab(self): 
         """

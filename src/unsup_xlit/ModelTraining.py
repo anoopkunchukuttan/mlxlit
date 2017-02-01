@@ -2,7 +2,6 @@ import argparse
 import os
 import sys
 import codecs
-import pickle
 
 import Model
 import AttentionModel
@@ -157,10 +156,11 @@ if __name__ == '__main__' :
     # Create output folders if required
     temp_model_output_dir = output_dir+'/temp_models/'
     outputs_dir = output_dir+'/outputs/'
+    mappings_dir = output_dir+'/mappings/'
     final_output_dir = output_dir+'/final_output/'
     log_dir = output_dir+'/log/'
 
-    for folder in [temp_model_output_dir, outputs_dir, final_output_dir]:
+    for folder in [temp_model_output_dir, outputs_dir, mappings_dir, final_output_dir]:
         if not os.path.exists(folder):
             os.makedirs(folder)
 
@@ -215,9 +215,13 @@ if __name__ == '__main__' :
     for lang in all_langs: 
         mapping[lang].finalize_vocab()
 
-    ### save the mapping
-    #with open(outputs_dir+'/mapping.pickle','w') as mapping_file:
-    #    pickle.dump(mapping,mapping_file)
+    ## save the mapping
+    ### NOTE: If mapping objects are shared across languages, this cannot be restored while loading the mapping
+    #         But this is ok for decoding, the sharing is a concern only during determination of vocabulary 
+    #         during training. Hence, this simpler `save` strategy has been implemented
+    for lang in all_langs: 
+        with open(mappings_dir+'/mapping_{}.json'.format(lang),'w') as mapping_json_file:
+            mapping[lang].save_mapping(mapping_json_file)
 
     print 'Vocabulary Statitics'
     for lang in all_langs: 
