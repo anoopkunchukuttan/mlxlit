@@ -134,6 +134,8 @@ if __name__ == '__main__' :
         #    mll.update(mono_langs)    
 
         all_langs=list(mll)
+        ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
+        #all_langs.append('hi')
     
         if use_monolingual:             
             mono_langs=list(mll)                
@@ -212,6 +214,9 @@ if __name__ == '__main__' :
         file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
         parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
+    
+    ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
+    #mapping['hi'].lang_list.add('hi')
 
     ## complete vocabulary creation
     for lang in all_langs: 
