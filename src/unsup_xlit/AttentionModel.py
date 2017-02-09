@@ -24,7 +24,18 @@ class AttentionModel():
         self.vocab_size={}
         for lang in self.lang_list: 
             self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
-    
+   
+        ### do u want separate input and output embedding vectors (for the same language)
+        ### Value should be False. 
+        ### Set to True only to experiment for indic-indic pair where input embedding  is phonetic (experimental support)
+        self.separate_output_embedding=True
+
+        max_val = 0.1
+
+        ####### Input embeddings 
+        self.embed_W = dict()
+        self.embed_b = dict()
+
         # Finds bit-vector representation for each character of each language
         self.bitvector_embeddings={}
         self.bitvector_embedding_size={}
@@ -33,13 +44,9 @@ class AttentionModel():
             self.bitvector_embedding_size[lang]=self.mapping[lang].get_bitvector_embedding_size(self.representation[lang])
 
         # Converting the character representation to embedding_size vector
-        max_val = 0.1
-
+        ## for sharing embeddings 
         self.embed_W0=None
         self.embed_b0=None
-
-        self.embed_W = dict()
-        self.embed_b = dict()
 
         for lang in self.lang_list:
             if self.representation[lang] in  ['phonetic','onehot_and_phonetic','onehot_shared']:
@@ -55,6 +62,39 @@ class AttentionModel():
                 self.embed_W[lang] = tf.matmul(self.bitvector_embeddings[lang], x, name='embed_W_{}'.format(lang))
                 self.embed_b[lang] = tf.Variable(tf.constant(0., shape=[self.embedding_size]), name = 'embed_b_{}'.format(lang))
 
+        ####### Output embeddings 
+        # Finds bit-vector representation for each character of each language (for the output side)
+        # This code block is needed only if you want a onehot shared representation on the output side irrespective
+        # of the input representation 
+
+
+        self.embed_outW = dict()
+        self.embed_outb = dict()
+
+        if not self.separate_output_embedding: 
+            self.embed_outW=self.embed_W
+            self.embed_outb=self.embed_b
+        else:            
+
+            out_representation='onehot_shared'
+            self.out_bitvector_embeddings={}
+            self.out_bitvector_embedding_size={}
+            for lang in self.lang_list:
+                self.out_bitvector_embeddings[lang] = tf.constant(self.mapping[lang].get_bitvector_embeddings(lang,out_representation),dtype=tf.float32)
+                self.out_bitvector_embedding_size[lang]=self.mapping[lang].get_bitvector_embedding_size(out_representation)
+
+            # Converting the character representation to embedding_size vector
+            ## for sharing embeddings 
+            self.embed_outW0=None
+            self.embed_outb0=None
+
+            for lang in self.lang_list:
+                if self.embed_outW0 is None: 
+                    self.embed_outW0 = tf.Variable(tf.random_uniform([self.out_bitvector_embedding_size[lang],self.embedding_size], -1*max_val, max_val), name = 'embed_outW0')
+                    self.embed_outb0 = tf.Variable(tf.constant(0., shape=[self.embedding_size]), name = 'embed_outb0')
+
+                self.embed_outW[lang] = tf.matmul(self.out_bitvector_embeddings[lang], self.embed_outW0, name='embed_outW_{}'.format(lang))
+                self.embed_outb[lang] = self.embed_outb0
 
         ##### Create Encoder
         self.input_encoder=None
@@ -223,11 +263,11 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[lang],self.mapping[lang].get_index(Mapping.Mapping.GO))+self.embed_b[lang],
+                        tf.nn.embedding_lookup(self.embed_outW[lang],self.mapping[lang].get_index(Mapping.Mapping.GO))+self.embed_outb[lang],
                         0) 
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b[lang] 
+                current_emb = tf.nn.embedding_lookup(self.embed_outW[lang],target_sequence[:,i-1])+self.embed_outb[lang] 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
             ### compute the context vector 
@@ -371,11 +411,11 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_b[target_lang],
+                        tf.nn.embedding_lookup(self.embed_outW[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_outb[target_lang],
                         0) 
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b[target_lang]
+                current_emb = tf.nn.embedding_lookup(self.embed_outW[target_lang],outputs[-1])+self.embed_outb[target_lang]
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
@@ -431,11 +471,11 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_W[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_b[target_lang],
+                        tf.nn.embedding_lookup(self.embed_outW[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_outb[target_lang],
                         0)
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],tf.reshape(prev_symbols,[-1]))+self.embed_b[target_lang]
+                current_emb = tf.nn.embedding_lookup(self.embed_outW[target_lang],tf.reshape(prev_symbols,[-1]))+self.embed_outb[target_lang]
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
