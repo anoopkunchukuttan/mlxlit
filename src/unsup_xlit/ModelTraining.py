@@ -128,11 +128,6 @@ if __name__ == '__main__' :
         for lp in [list(x) for x in parallel_train_langs]: 
             mll.update(lp)
 
-        ##### TODO: uncomment this block for zeroshot. this is to support monolingual training for any language (for multilingual setup)    
-        #if args.lang_pairs is not None:     
-        #    mono_langs=args.langs.split(',')
-        #    mll.update(mono_langs)    
-
         all_langs=list(mll)
         ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
         #all_langs.append('hi')

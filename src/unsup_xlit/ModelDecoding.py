@@ -4,6 +4,7 @@ import sys
 import codecs
 import itertools as it
 import pickle 
+import numpy as np
 
 import AttentionModel
 import Mapping
@@ -27,7 +28,7 @@ if __name__ == '__main__' :
     # Creating parser
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--max_seq_length', type = int, default = 50, help = 'maximum sequence length')
+    parser.add_argument('--max_seq_length', type = int, default = 30, help = 'maximum sequence length')
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
@@ -40,9 +41,9 @@ if __name__ == '__main__' :
 
     parser.add_argument('--lang_pair', type = str, help = 'language pair for decoding: "lang1-lang2"')
 
-    #parser.add_argument('--data_dir', type = str, help = 'data directory')
     parser.add_argument('--model_fname', type = str, help = 'model file name')
-    parser.add_argument('--mapping_fname', type = str, help = 'mapping file name')
+    parser.add_argument('--mapping_dir', type = str, help = 'directory containing mapping files')
+    parser.add_argument('--data_dir', type = str, help = 'directory containing mapping files')
     parser.add_argument('--in_fname', type = str, help = 'input file')
     parser.add_argument('--out_fname', type = str, help = 'results file')
 
@@ -65,9 +66,9 @@ if __name__ == '__main__' :
     beam_size_val= args.beam_size
     topn_val = args.topn
 
-    #data_dir = args.data_dir
     model_fname=args.model_fname
-    mapping_fname = args.mapping_fname 
+    mapping_dir = args.mapping_dir
+    data_dir = args.data_dir
     in_fname=args.in_fname
     out_fname=args.out_fname
 
@@ -91,6 +92,14 @@ if __name__ == '__main__' :
     print representation 
 
     ## Creating mapping object to store char-id mappings
+    ##lang_pairs=[lang_pair]
+    ##all_langs=lang_pair
+
+    #for lang in all_langs: 
+    #    representation[lang]='phonetic'
+
+    ###### create vocabulary from loading corpus 
+
     #mapping={}
     #shared_phonetic_mapping = Mapping.IndicPhoneticMapping()
     #shared_onehot_mapping = Mapping.IndicPhoneticMapping()
@@ -105,25 +114,37 @@ if __name__ == '__main__' :
 
     ## Reading Parallel Training data
     #parallel_train_data = dict()
-    #file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
-    #parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
-    #    file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
+    #for lang_pair in lang_pairs: 
+    #    file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
+    #    parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
+    #        file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
 
     ### complete vocabulary creation
-    #for lang in lang_pair:
+    #for lang in all_langs:
     #    mapping[lang].finalize_vocab()
+    #    print lang
+    #    print '{} {}'.format(len(mapping[lang].vocab_i2c), mapping[lang].get_bitvector_embedding_size(representation[lang]))
+    #    #print mapping[lang].vocab_i2c        
 
-    ## load the mapping
-    mapping=None
-    with open(mapping_fname,'r') as mapping_file:
-        mapping=pickle.load(mapping_file)
+    #sys.exit(0)
+
+
+    ### load the mapping
+    mapping={}
+
+    for lang in lang_pair: 
+        if representation[lang]=='onehot': 
+            mapping[lang]=Mapping.CharacterMapping()
+        else: 
+            mapping[lang]=Mapping.IndicPhoneticMapping()        
+        with open(mapping_dir+'/'+'mapping_'+lang+'.json','r') as mapping_file:     
+            mapping[lang].load_mapping(mapping_file)
 
     ## Print Representation and Mappings 
     print 'Mapping'
     print mapping
 
-    # Reading Test data
-    test_data = MonoDataReader.MonoDataReader(lang_pair[0], in_fname,mapping[lang],max_sequence_length)
+    test_data = MonoDataReader.MonoDataReader(lang_pair[0], in_fname,mapping[lang_pair[0]],max_sequence_length)
 
     ###################################################################
     #    Interacting with model and creating computation graph        #
@@ -144,7 +165,6 @@ if __name__ == '__main__' :
 
     #Saving model
     saver = tf.train.Saver(max_to_keep = 3)
-    final_saver = tf.train.Saver()
 
     print "Done with creating graph. Starting session"
 

@@ -25,10 +25,13 @@ class AttentionModel():
         for lang in self.lang_list: 
             self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
    
+        ### use shared decoders or not
+        self.is_shared_decoder=True
+
         ### do u want separate input and output embedding vectors (for the same language)
         ### Value should be False. 
         ### Set to True only to experiment for indic-indic pair where input embedding  is phonetic (experimental support)
-        self.separate_output_embedding=True
+        self.separate_output_embedding=False
 
         max_val = 0.1
 
@@ -66,7 +69,6 @@ class AttentionModel():
         # Finds bit-vector representation for each character of each language (for the output side)
         # This code block is needed only if you want a onehot shared representation on the output side irrespective
         # of the input representation 
-
 
         self.embed_outW = dict()
         self.embed_outb = dict()
@@ -122,10 +124,12 @@ class AttentionModel():
         with tf.variable_scope('decoder'):
             shared_decoder=rnn_cell.BasicLSTMCell(dec_rnn_size)
             for lang in self.lang_list:  ## TODO: can we restrict which languages decoder is created for?
-                #### decoder per language 
-                #self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
-                #### shared decoder
-                self.decoder_cell[lang] =  shared_decoder 
+                if self.is_shared_decoder:
+                    #### shared decoder
+                    self.decoder_cell[lang] =  shared_decoder 
+                else:
+                    #### decoder per language 
+                    self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
             self.dec_state_size=self.decoder_cell.values()[0].state_size
        
         ### Encoder state to decoder adapter 
