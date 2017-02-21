@@ -5,19 +5,19 @@ export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=$MLXLIT_BASE/src/conll16_unsup_xlit
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 #############################################################################################
 ########################## supervised transliteration - multilingual #########################
 ##############################################################################################
 
-#dataset='news_2015'
+#dataset='news_2015_reversed'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
 ##restore_epoch_number="17"
 #
-#for expname in `echo 1_multilingual_decshared_dec1024`
+#for expname in `echo 1_multilingual_decshared_1024`
 #do 
 #
 #    exptype=`echo $expname | cut -f 1 -d '_'`
@@ -48,12 +48,12 @@ export CUDA_VISIBLE_DEVICES=1
 #    for representation in `echo onehot_shared`
 #    do 
 #
-#        # for EN-INDIC
-#        src_lang='en'
-#        tgt_langs=(hi bn kn ta)
-#        multiconf=en-indic
-#        lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
-#        representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#        ## for EN-INDIC
+#        #src_lang='en'
+#        #tgt_langs=(hi bn kn ta)
+#        #multiconf=en-indic
+#        #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
+#        #representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
 #
 #        ## for EN-INDIC  (for zeroshot training)
 #        #src_lang='en'
@@ -63,12 +63,12 @@ export CUDA_VISIBLE_DEVICES=1
 #        #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
 #        #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
 #
-#        ### for INDIC-EN
-#        #tgt_lang='en'
-#        #src_langs=(hi bn kn ta)
-#        #multiconf=indic-en
-#        #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-en," ; done | sed 's/,$//g'`
-#        #representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#        ## for INDIC-EN
+#        tgt_lang='en'
+#        src_langs=(hi bn kn ta)
+#        multiconf=indic-en
+#        lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-en," ; done | sed 's/,$//g'`
+#        representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
 #
 #        ### for INDIC-EN (for zeroshot training)
 #        #tgt_lang='en'
@@ -94,6 +94,7 @@ export CUDA_VISIBLE_DEVICES=1
 #            $more_opts \
 #            --data_dir  $data_dir/$multiconf \
 #            --output_dir  $o \
+#            --enc_rnn_size 1024 \
 #            --dec_rnn_size 1024 \
 #            --representation "en:onehot,$representations_param"  \
 #            --max_epochs 30 >> $o/train.log 2>&1 
@@ -110,91 +111,13 @@ export CUDA_VISIBLE_DEVICES=1
 ########################## supervised transliteration - multilingual INDIC-INDIC #########################
 ##############################################################################################
 
-#dataset='news_2015_indic'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-##restore_epoch_number="17"
-#
-#for expname in `echo 1_multilingual_sep_ioembed`
-#do 
-#
-#    exptype=`echo $expname | cut -f 1 -d '_'`
-#
-#    ######### choose specific model  ############
-#
-#    if [ $exptype = '1' ]  # sup_nomono
-#    then 
-#        train_bidirectional=''
-#        use_monolingual=''
-#    elif [ $exptype = '2' ] # bisup_nomono 
-#    then 
-#        train_bidirectional='--train_bidirectional'
-#        use_monolingual=''
-#    elif [ $exptype = '3' ] # sup_mono 
-#    then 
-#        train_bidirectional=''
-#        use_monolingual='--use_monolingual'
-#    elif [ $exptype = '4' ] # bisup_mono
-#    then 
-#        train_bidirectional='--train_bidirectional'
-#        use_monolingual='--use_monolingual'
-#    fi 
-#   
-#    ######## Experiment loop starts here ########
-#
-#    #for representation in `echo onehot phonetic`
-#    for representation in `echo phonetic`
-#    do 
-#
-#        multiconf=indic-indic
-#
-#        ## all pairs 
-#        #lang_pairs="bn-hi,bn-kn,bn-ta,hi-bn,hi-kn,hi-ta,kn-bn,kn-hi,kn-ta,ta-bn,ta-hi,ta-kn"
-#
-#        ##for zero-shot removed some pairs 
-#        lang_pairs="bn-hi,bn-kn,hi-bn,hi-ta,kn-bn,kn-ta,ta-hi,ta-kn"
-#        ## lpairs to be used for evaluation: kn-hi,hi-kn,bn-ta,ta-bn,
-#        o=$output_dir/$expname/$representation/$multiconf
-#        
-#        echo 'Start: ' $expname $multiconf $representation 
-#    
-#        ### Training and Testing 
-#        rm -rf $o
-#        mkdir -p $o
-#
-#        python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
-#            --train_mode sup \
-#            $train_bidirectional \
-#            $use_monolingual \
-#            --lang_pairs "$lang_pairs" \
-#            --data_dir  $data_dir/$multiconf \
-#            --output_dir  $o \
-#            --representation "$representation"  \
-#            --batch_size 32 \
-#            --max_epochs 30 >> $o/train.log 2>&1 
-#    
-#            #--start_from $restore_epoch_number \
-#    
-#        echo 'End: ' $expname $langpair $representation 
-#    
-#    done 
-#
-#done 
-
-#############################################################################################
-######################## supervised transliteration ########################################
-#############################################################################################
-
-dataset='news_2015_reversed'
+dataset='news_2015_indic'
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 
 #restore_epoch_number="17"
 
-#for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
-#for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
-for expname in `echo 1_test_2`
+for expname in `echo 1_multilingual_512`
 do 
 
     exptype=`echo $expname | cut -f 1 -d '_'`
@@ -221,45 +144,127 @@ do
    
     ######## Experiment loop starts here ########
 
-    #for langpair in `echo hi-kn bn-hi ta-kn`
-    #for langpair in `echo hi-en bn-en kn-en ta-en`
-    #for langpair `echo bn-hi bn-kn bn-ta hi-bn hi-kn hi-ta kn-bn kn-hi kn-ta ta-bn ta-hi ta-kn`
-    for langpair in `echo hi-en`
-    do
-        src_lang=`echo $langpair | cut -f 1 -d '-'`
-        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-    
-        #for representation in `echo onehot phonetic`
-        for representation in `echo onehot`
-        do 
-            o=$output_dir/$expname/$representation/$langpair
-            
-            echo 'Start: ' $expname $langpair $representation 
-    
-            ### Training and Testing 
-            rm -rf $o
-            mkdir -p $o
+    #for representation in `echo onehot phonetic`
+    for representation in `echo onehot_shared`
+    do 
 
-            python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
-                --train_mode sup \
-                $train_bidirectional \
-                $use_monolingual \
-                --lang_pairs "$src_lang-$tgt_lang" \
-                --data_dir  $data_dir/$langpair \
-                --output_dir  $o \
-                --batch_size 32 \
-                --representation $representation \
-                --max_epochs 30 >> $o/train.log 2>&1 
-    
-                #--representation "en:onehot,$src_lang:$representation"  \
-                #--start_from $restore_epoch_number \
+        multiconf=indic-indic
 
-            echo 'End: ' $expname $langpair $representation 
+        ## all pairs 
+        #lang_pairs="bn-hi,bn-kn,bn-ta,hi-bn,hi-kn,hi-ta,kn-bn,kn-hi,kn-ta,ta-bn,ta-hi,ta-kn"
+
+        ##for zero-shot removed some pairs 
+        lang_pairs="bn-hi,bn-kn,hi-bn,hi-ta,kn-bn,kn-ta,ta-hi,ta-kn"
+        ## lpairs to be used for evaluation: kn-hi,hi-kn,bn-ta,ta-bn,
+        o=$output_dir/$expname/$representation/$multiconf
+        
+        echo 'Start: ' $expname $multiconf $representation 
     
-        done 
-    done     
+        ### Training and Testing 
+        rm -rf $o
+        mkdir -p $o
+
+        python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
+            --train_mode sup \
+            $train_bidirectional \
+            $use_monolingual \
+            --lang_pairs "$lang_pairs" \
+            --data_dir  $data_dir/$multiconf \
+            --output_dir  $o \
+            --representation "$representation"  \
+            --enc_rnn_size 512 \
+            --dec_rnn_size 512 \
+            --batch_size 32 \
+            --max_epochs 30 >> $o/train.log 2>&1 
+    
+            #--start_from $restore_epoch_number \
+    
+        echo 'End: ' $expname $langpair $representation 
+    
+    done 
 
 done 
+
+#############################################################################################
+######################## supervised transliteration ########################################
+#############################################################################################
+
+#dataset='news_2015_indic'
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+#
+##restore_epoch_number="17"
+#
+##for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
+##for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
+#for expname in `echo 1_bilingual_256`
+#do 
+#
+#    exptype=`echo $expname | cut -f 1 -d '_'`
+#
+#    ######### choose specific model  ############
+#
+#    if [ $exptype = '1' ]  # sup_nomono
+#    then 
+#        train_bidirectional=''
+#        use_monolingual=''
+#    elif [ $exptype = '2' ] # bisup_nomono 
+#    then 
+#        train_bidirectional='--train_bidirectional'
+#        use_monolingual=''
+#    elif [ $exptype = '3' ] # sup_mono 
+#    then 
+#        train_bidirectional=''
+#        use_monolingual='--use_monolingual'
+#    elif [ $exptype = '4' ] # bisup_mono
+#    then 
+#        train_bidirectional='--train_bidirectional'
+#        use_monolingual='--use_monolingual'
+#    fi 
+#   
+#    ######## Experiment loop starts here ########
+#
+#    #for langpair in `echo hi-kn bn-hi ta-kn`
+#    #for langpair in `echo hi-en bn-en kn-en ta-en`
+#    #for langpair `echo bn-hi bn-kn bn-ta hi-bn hi-kn hi-ta kn-bn kn-hi kn-ta ta-bn ta-hi ta-kn`
+#    for langpair in `echo bn-hi`
+#    do
+#        src_lang=`echo $langpair | cut -f 1 -d '-'`
+#        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#    
+#        #for representation in `echo onehot phonetic`
+#        for representation in `echo onehot`
+#        do 
+#            o=$output_dir/$expname/$representation/$langpair
+#            
+#            echo 'Start: ' $expname $langpair $representation 
+#    
+#            ### Training and Testing 
+#            rm -rf $o
+#            mkdir -p $o
+#
+#            python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
+#                --train_mode sup \
+#                $train_bidirectional \
+#                $use_monolingual \
+#                --lang_pairs "$src_lang-$tgt_lang" \
+#                --data_dir  $data_dir/$langpair \
+#                --output_dir  $o \
+#                --representation $representation \
+#                --enc_rnn_size 256 \
+#                --dec_rnn_size 256 \
+#                --batch_size 32 \
+#                --max_epochs 30 >> $o/train.log 2>&1 
+#    
+#                #--representation "en:onehot,$src_lang:$representation"  \
+#                #--start_from $restore_epoch_number \
+#
+#            echo 'End: ' $expname $langpair $representation 
+#    
+#        done 
+#    done     
+#
+#done 
 
 #############################################################################################
 ##################### EVALUATE SPECIFIC ITERATION #################
