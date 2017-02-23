@@ -16,7 +16,14 @@ import numpy as np
 import calendar,time
 from indicnlp import loader
 
+def formatted_timeinterval(seconds):
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    return "%d:%02d:%02d" % (h, m, s)
+
 if __name__ == '__main__' :
+
+    print 'Process started at: ' + time.asctime()
 
     #### Load Indic NLP Library ###
     ## Note: Environment variable: INDIC_RESOURCES_PATH must be set
@@ -33,7 +40,11 @@ if __name__ == '__main__' :
     parser.add_argument('--output_dir', type = str, help = 'output folder name')
 
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
-    parser.add_argument('--langs', type = str, default = None, help = 'List of language for unsupervised training given as: "lang1,lang2,lang3,lang4,..."')
+
+    parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
+    parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
+    parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
+    parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
 
     parser.add_argument('--max_seq_length', type = int, default = 30, help = 'maximum sequence length')
     parser.add_argument('--batch_size', type = int, default = 64, help = 'size of each batch used in training')
@@ -42,25 +53,12 @@ if __name__ == '__main__' :
     parser.add_argument('--dropout_keep_prob', type = float, default = 0.5, help = 'keep probablity for the dropout layers')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
 
-    parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
-    parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
-    parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
-    parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
-
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
     parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
 
     parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the final epochs from previous runs')
 
     parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
-
-    parser.add_argument('--train_mode', type = str, default = 'sup', help = 'one of "unsup" for unsupervised learning, "sup" for supervised learning')
-    parser.add_argument('--train_bidirectional', action = 'store_true', default = False, help = 'Train in both directions. Applicable for supervised learning only')
-    parser.add_argument('--use_monolingual', action = 'store_true' , default = False, help = 'Use additional monolingual data in addition to parallel training data for monolingual reconstruction. Applicable for supervised learning only')
-    parser.add_argument('--which_mono', type = int, default = -100, help = 'which monolingual to use (hack code, may not work - must be commented)')
-
-    parser.add_argument('--train_size', type = int, default = -1, help = 'Size of the parallel training set to use for all language pairs (not implemented yet)')
-
 
     args = parser.parse_args()
 
@@ -69,7 +67,33 @@ if __name__ == '__main__' :
         print '{}: {}'.format(k,v)
     print '========== Parameters end ============='
 
-    #Parsing arguments
+    ## check for required parameters
+    if args.lang_pairs is None:
+        print 'ERROR: --lang_pairs has to be set'
+        sys.exit(1)
+
+    if args.data_dir is None:
+        print 'ERROR: --data_dir has to be set'
+        sys.exit(1)
+
+    if args.output_dir is None:
+        print 'ERROR: --output_dir has to be set'
+        sys.exit(1)
+
+    #### Reading arguments
+
+    ## directories 
+    data_dir = args.data_dir
+    output_dir = args.output_dir
+
+    ## architecture
+    enc_type = args.enc_type
+    embedding_size = args.embedding_size
+    enc_rnn_size = args.enc_rnn_size
+    dec_rnn_size = args.dec_rnn_size
+    representation = None
+
+    ## additional hyperparameters 
     batch_size = args.batch_size
     max_epochs = args.max_epochs
     learning_rate = args.learning_rate
@@ -77,80 +101,37 @@ if __name__ == '__main__' :
     infer_every = args.infer_every
     dropout_keep_prob_val = args.dropout_keep_prob
 
-    enc_type = args.enc_type
-    embedding_size = args.embedding_size
-    enc_rnn_size = args.enc_rnn_size
-    dec_rnn_size = args.dec_rnn_size
-    representation = None
-
+    ## decoding
     beam_size_val= args.beam_size
     topn_val = args.topn
 
-    train_mode = args.train_mode
-    train_bidirectional = args.train_bidirectional 
-    use_monolingual = args.use_monolingual 
-
-    if train_mode=='unsup' and args.langs is None:
-        print 'ERROR: --langs  has to be set for "unsup" mode'
-        sys.exit(1)
-    elif train_mode == 'sup' and args.lang_pairs is None:
-        print 'ERROR: --lang_pairs has to be set for "{}" mode'.format(train_mode)
-        sys.exit(1)
-    elif train_mode=='unsup' and args.lang_pairs is not None:
-        print 'WARNING:--lang_pairs is not valid for "unsup" mode, ignoring parameter'
-    elif train_mode == 'sup' and args.langs is not None:
-        print 'WARNING:--langs is not valid for "{}" mode, ignoring parameter'.format(train_mode)
-
-    data_dir = args.data_dir
-    output_dir = args.output_dir
-    start_from = args.start_from
-
     # Setting the language parameters
-    mono_langs=None
     parallel_train_langs=None
     parallel_valid_langs=None
     test_langs=None
     all_langs=None
 
-    if train_mode=='unsup':
-        parallel_train_langs=[]
-        mono_langs=args.langs.split(',')
-        parallel_valid_langs=list(it.combinations(mono_langs,2))
-        test_langs = list(it.permutations(mono_langs,2))
-        all_langs=mono_langs 
+    parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
+    parallel_valid_langs=parallel_train_langs
 
-    elif train_mode=='sup':
+    mll=set()
+    for lp in [list(x) for x in parallel_train_langs]: 
+        mll.update(lp)
 
-        parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
-        parallel_valid_langs=parallel_train_langs
-
-        mll=set()
-        for lp in [list(x) for x in parallel_train_langs]: 
-            mll.update(lp)
-
-        all_langs=list(mll)
-        ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-        #all_langs.append('hi')
+    all_langs=list(mll)
+    ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
+    #all_langs.append('hi')
     
-        if use_monolingual:             
-            mono_langs=list(mll)                
+    test_langs=parallel_train_langs 
 
-            ### NOTE: temporary - use only source for monolingual optimization (works only for a single pair)
-            #mono_langs=[parallel_train_langs[0][args.which_mono]]
-        else:
-            mono_langs=[]
-
-        if train_bidirectional:             
-            test_langs= parallel_train_langs + [ tuple(reversed(x)) for x in parallel_train_langs ]
-        else: 
-            test_langs=parallel_train_langs 
-
-    print 'Parallel Train, Mono, Parallel Valid, Test Langs, All Langs'
+    print 'Parallel Train, Parallel Valid, Test Langs, All Langs'
     print parallel_train_langs
-    print mono_langs
     print parallel_valid_langs
     print test_langs
     print all_langs 
+
+    ## restart from this iteration number
+    start_from = args.start_from
 
     # Create output folders if required
     temp_model_output_dir = output_dir+'/temp_models/'
@@ -198,11 +179,6 @@ if __name__ == '__main__' :
 
     print 'Start Reading Data'
 
-    # Reading Monolingual Training data
-    mono_train_data = dict()
-    for lang in mono_langs:
-        mono_train_data[lang] = MonoDataReader.MonoDataReader(lang,data_dir+'/mono_train/'+lang,mapping[lang],max_sequence_length)
-
     # Reading Parallel Training data
     parallel_train_data = dict()
     for lang_pair in parallel_train_langs:
@@ -243,7 +219,7 @@ if __name__ == '__main__' :
         test_data[lang_pair] = MonoDataReader.MonoDataReader(lang_pair[0],
             file_name,mapping[lang_pair[0]],max_sequence_length)
 
-    print 'Stop Reading Data' 
+    print 'Finished Reading Data' 
 
     ###################################################################
     #    Interacting with model and creating computation graph        #
@@ -266,66 +242,16 @@ if __name__ == '__main__' :
     beam_size = tf.placeholder(dtype=tf.int32)
     topn = tf.placeholder(dtype=tf.int32)
     
-    # Optimizers for training using monolingual data
-    # Has only one optimizer which minimizes loss of sequence reconstruction
-    unsup_optimizer = dict()
-    for lang in mono_langs:
-        unsup_optimizer[lang] = model.get_mono_optimizer(learning_rate,lang,batch_sequences,batch_sequence_masks,batch_sequence_lengths,dropout_keep_prob)
-
     # Optimizers for training using parallel data
-    # For each language pair, there are 3 optimizers:
-    # 1. Minimize loss for transliterating first language to second
-    # 2. Minimize loss for transliterating second language to first
-    # 3. Minimize difference between the hidden representations
-    #  
-    # It is possible to take combinations of these losses 
-    #  
-    #  (a) 1,2,3
-    #  (b) 1+2+3 
-    #  (c) 1+2,3
-
 
     sup_optimizer = dict()
-    for lang1,lang2 in parallel_train_langs:
-
-        if train_bidirectional: 
-
-            ## (a) each loss optimized separately 
-
-            sup_optimizer[(lang1,lang2)] = [
-                model.get_parallel_optimizer(learning_rate,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob),
-                model.get_parallel_optimizer(learning_rate,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,dropout_keep_prob),
-                model.get_parallel_difference_optimizer(learning_rate,
-                    lang1,batch_sequences,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_lengths_2,dropout_keep_prob)]
-
-            #### (b) sum of all losses 
-            #sup_optimizer[(lang1,lang2)] = [
-            #    model.get_parallel_all_optimizer(learning_rate,
-            #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob),
-            #        ]
-
-            #### (c) optimize separately: (i) sum of translation losses (ii) representation loss
-            #sup_optimizer[(lang1,lang2)] = [
-            #    model.get_parallel_bi_optimizer(learning_rate,
-            #        lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob),
-            #    model.get_parallel_difference_optimizer(learning_rate,
-            #        lang1,batch_sequences,batch_sequence_lengths,
-            #        lang2,batch_sequences_2,batch_sequence_lengths_2,dropout_keep_prob),
-            #       ]
-        else: 
-
-            sup_optimizer[(lang1,lang2)] = [
-                model.get_parallel_optimizer(learning_rate,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob),
-                    ]
+    for lang_pair in parallel_train_langs:
+        lang1,lang2=lang_pair
+        print 'Created optimizer for language pair: {}-{}'.format(lang1,lang2)
+        sup_optimizer[(lang1,lang2)] = model.get_parallel_optimizer(
+                learning_rate,
+                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob)
 
     # Finding validation sequence loss
     # For each pair of language, return sum of loss of transliteration one script to another and vice versa
@@ -333,29 +259,22 @@ if __name__ == '__main__' :
 
     for lang_pair in parallel_valid_langs:
         lang1,lang2=lang_pair
-
-        ## TODO: see if the 'unsup condition is required'
-        if (train_mode=='sup' and train_bidirectional) or train_mode=='unsup':
-            validation_seq_loss[lang_pair] = model.seq_loss_2(
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob) \
-                + model.seq_loss_2(
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,dropout_keep_prob)
-        else:
-            validation_seq_loss[lang_pair] = model.seq_loss_2(
-                    lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
-                    lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob)
+        print 'Created validation loss calculator for language pair: {}-{}'.format(lang1,lang2)
+        validation_seq_loss[lang_pair] = model.seq_loss_2(
+                lang1,batch_sequences,batch_sequence_masks,batch_sequence_lengths,
+                lang2,batch_sequences_2,batch_sequence_masks_2,batch_sequence_lengths_2,dropout_keep_prob)
 
     # Predict output for test sequences
     infer_output = dict()
     infer_output_scores = dict()
     for lang_pair in test_langs:
+        lang1,lang2=lang_pair
+        print 'Created decoder for language pair: {}-{}'.format(lang1,lang2)
         infer_output[lang_pair], infer_output_scores[lang_pair] =  \
             model.transliterate_beam(lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size,topn)
 
     # All training dataset
-    training_langs = mono_langs+parallel_train_langs
+    training_langs = parallel_train_langs
 
     # Fractional epoch: stores what fraction of each dataset is used till now after last completed epoch.
     fractional_epochs = [0.0 for _ in training_langs]
@@ -383,41 +302,52 @@ if __name__ == '__main__' :
     steps = 0
     validation_losses = []
 
+    epoch_train_time=0.0
+    epoch_train_loss=0.0
+
+    start_time=time.time()
+
     # Whether to continue or now
     cont = True
 
+    print 'Starting training ...'
     while cont:
         # Selected the dataset whose least fraction is used for training in current epoch
-        # idx = fractional_epochs.index(min(fractional_epochs))
-        # opti_lang = training_langs[idx]
         for (opti_lang,idx) in zip(training_langs,range(len(training_langs))):
-            if(type(opti_lang) is str):     # If it is a monolingual dataset, call optimizer
-                lang = opti_lang
-                sequences,sequence_masks,sequence_lengths = mono_train_data[lang].get_next_batch(batch_size)
-                sess.run(unsup_optimizer[lang], feed_dict = {batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,dropout_keep_prob:dropout_keep_prob_val})
-                fractional_epochs[idx] += float(len(sequences))/mono_train_data[opti_lang].num_words
-            else:                           # If it is a bilingual dataset, call corresponding optimizers
-                lang1 = opti_lang[0]
-                lang2 = opti_lang[1]
 
-                sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
-                
-                sess.run(sup_optimizer[opti_lang], feed_dict = {
-                    batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-                    batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
-                    dropout_keep_prob:dropout_keep_prob_val
-                    })
+            update_start_time=time.time()
 
-                fractional_epochs[idx] += float(len(sequences))/parallel_train_data[opti_lang].num_words
+            # If it is a bilingual dataset, call corresponding optimizers
+            lang1 = opti_lang[0]
+            lang2 = opti_lang[1]
+
+            sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
+            
+            _, step_loss = sess.run(sup_optimizer[opti_lang], feed_dict = {
+                batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
+                batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
+                dropout_keep_prob:dropout_keep_prob_val
+                })
+
+            fractional_epochs[idx] += float(len(sequences))/parallel_train_data[opti_lang].num_words
+
+            epoch_train_loss+=step_loss
+
+            update_end_time=time.time()
+            epoch_train_time+=(update_end_time-update_start_time)
 
         # One more batch is processed
         steps+=1
         # If all datasets are used for training epoch is complete
         if(min(fractional_epochs) >= 1.0):
+
+            # update epoch number 
             completed_epochs += 1
-            fractional_epochs = [0.0 for _ in mono_langs+parallel_train_langs]
+
+            print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Training loss: "+str(epoch_train_loss)
 
             # Find validation loss
+            valid_start_time=time.time()
             validation_loss = 0.0
             for lang_pair in parallel_valid_langs:
                 sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_valid_data[lang_pair].get_data()
@@ -428,8 +358,10 @@ if __name__ == '__main__' :
                     })
             validation_losses.append(validation_loss)
 
+            valid_end_time=time.time()
+            epoch_valid_time=(valid_end_time-valid_start_time)
+
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Validation loss: "+str(validation_loss)
-            sys.stdout.flush()
 
             #### Comment it to avoid early stopping
             ## If validation loss is increasing since last 3 epochs, take the last 4th model and stop training process
@@ -442,21 +374,27 @@ if __name__ == '__main__' :
             if(completed_epochs >= max_epochs):
                 cont = False
 
+            ### Decode the test set
+            test_start_time=time.time()
+
             if(cont == False or (infer_every > 0 and completed_epochs%infer_every == 0)):
+
                 # If this was the last epoch, output result to final output folder, otherwise to outputs folder
                 if(cont == False):
                     out_folder = final_output_dir
                 else:
                     out_folder = outputs_dir
 
-                accuracies = []
-                for lang_pair in test_langs:
-                    source_lang = lang_pair[0]
-                    target_lang = lang_pair[1]
-                    sequences, _, sequence_lengths = test_data[lang_pair].get_data()
-                    predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
-                    if completed_epochs % infer_every == 0:
-                        #codecs.open(out_folder+str(completed_epochs).zfill(3)+source_lang+'-'+target_lang+'_','w','utf-8').write(u'\n'.join(predicted_sequences))
+                if completed_epochs % infer_every == 0:
+                    test_loss=0.0
+                    for lang_pair in test_langs:
+                        source_lang = lang_pair[0]
+                        target_lang = lang_pair[1]
+                        sequences, _, sequence_lengths = test_data[lang_pair].get_data()
+
+                        predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
+
+                        ## write output to file 
                         out_fname=out_folder+str(completed_epochs).zfill(3)+'test.nbest.'+source_lang+'-'+target_lang+'.'+target_lang
                         with codecs.open(out_fname,'w','utf-8') as outfile: 
                             for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
@@ -465,10 +403,44 @@ if __name__ == '__main__' :
                                     sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
                                     outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 
+                        ### compute loss: just the negative of the likelihood of best candidates
+                        best_scores=predicted_scores[:,0]
+                        test_loss+= (-np.sum(best_scores))
+                    print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Test loss: "+str(test_loss)
+
+            test_end_time=time.time()
+            epoch_test_time=(test_end_time-test_start_time)
+
             # Save current model
             if(cont == True):
                 #if(completed_epochs==1 or (len(validation_losses)>=2 and validation_losses[-1]<validation_losses[-2])):
                 saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
+            print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
+                    "\t Time (min)::: train> {} valid> {} test> {}".format(
+                            formatted_timeinterval(epoch_train_time), 
+                            formatted_timeinterval(epoch_valid_time), 
+                            formatted_timeinterval(epoch_test_time)
+                            )
+
+            ## update epoch variables 
+            fractional_epochs = [0.0 for _ in parallel_train_langs]
+            epoch_train_time=0.0
+            epoch_train_loss=0.0
+
+            print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
+                    "\t Number of training steps: {}".format(steps)
+            sys.stdout.flush()
+
     # save final model
     final_saver.save(sess,output_dir+'/final_model_epochs_'+str(completed_epochs))
+
+    print 'End training' 
+
+    print 'Final number of training steps: {}'.format(steps)
+
+    #### Print total training time
+    end_time=time.time()
+    print 'Total Time for Training (minutes) : {}'.format(formatted_timeinterval(end_time-start_time))
+
+    print 'Process terminated at: ' + time.asctime()
