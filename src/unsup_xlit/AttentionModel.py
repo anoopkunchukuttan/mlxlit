@@ -24,11 +24,17 @@ class AttentionModel():
             self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
    
         ### use shared decoders or not
+        print 'Using a shared decoder for all target languages'
         self.is_shared_decoder=True
+        #print 'Using a separate decoder for each target language'
+        #self.is_shared_decoder=False
 
         ### do u want separate input and output embedding vectors (for the same language)
         ### Value should be False. 
         ### Set to True only to experiment for indic-indic pair where input embedding  is phonetic (experimental support)
+        #print 'Using separate input and output embeddings'
+        #self.separate_output_embedding=True
+        print 'Using the same embedding for input and output'
         self.separate_output_embedding=False
 
         max_val = 0.1
