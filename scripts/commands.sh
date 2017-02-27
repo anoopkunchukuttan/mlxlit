@@ -58,7 +58,7 @@ export CUDA_VISIBLE_DEVICES=0
 #
 #        o=$output_dir/$expname/$representation/$multiconf
 #        
-#        echo 'Start: ' $expname $multiconf $representation 
+#        echo 'Start: ' $dataset $expname $multiconf $representation 
 #    
 #        ### Training and Testing 
 #        rm -rf $o
@@ -76,7 +76,7 @@ export CUDA_VISIBLE_DEVICES=0
 #    
 #            #--start_from $restore_epoch_number \
 #    
-#        echo 'End: ' $expname $langpair $representation 
+#        echo 'End: ' $dataset $expname $langpair $representation 
 #    
 #    done 
 #
@@ -111,7 +111,7 @@ export CUDA_VISIBLE_DEVICES=0
 #        ## lpairs to be used for evaluation: kn-hi,hi-kn,bn-ta,ta-bn,
 #        o=$output_dir/$expname/$representation/$multiconf
 #        
-#        echo 'Start: ' $expname $multiconf $representation 
+#        echo 'Start: ' $dataset $expname $multiconf $representation 
 #    
 #        ### Training and Testing 
 #        rm -rf $o
@@ -129,7 +129,7 @@ export CUDA_VISIBLE_DEVICES=0
 #    
 #            #--start_from $restore_epoch_number \
 #    
-#        echo 'End: ' $expname $langpair $representation 
+#        echo 'End: ' $dataset $expname $langpair $representation 
 #    
 #    done 
 #
@@ -139,7 +139,7 @@ export CUDA_VISIBLE_DEVICES=0
 ######################## supervised transliteration - bilingual  ############################
 #############################################################################################
 
-dataset='news_2015'
+dataset='news_2015_reversed'
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 
@@ -147,7 +147,7 @@ output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/s
 
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono`
 #for expname in `echo 1_sup_nomono 2_bisup_nomono 3_sup_mono 4_bisup_mono 3_2_use_src 3_3_use_tgt 4_2_all_loss 4_3_ll_rep_loss`
-for expname in `echo 100_test_refactor`
+for expname in `echo 1_bilingual_1024`
 do 
 
     ######## Experiment loop starts here ########
@@ -155,7 +155,7 @@ do
     #for langpair in `echo hi-kn bn-hi ta-kn`
     #for langpair in `echo hi-en bn-en kn-en ta-en`
     #for langpair `echo bn-hi bn-kn bn-ta hi-bn hi-kn hi-ta kn-bn kn-hi kn-ta ta-bn ta-hi ta-kn`
-    for langpair in `echo en-bn`
+    for langpair in `echo hi-en`
     do
         src_lang=`echo $langpair | cut -f 1 -d '-'`
         tgt_lang=`echo $langpair | cut -f 2 -d '-'`
@@ -165,7 +165,7 @@ do
         do 
             o=$output_dir/$expname/$representation/$langpair
             
-            echo 'Start: ' $expname $langpair $representation 
+            echo 'Start: ' $dataset $expname $langpair $representation 
     
             ### Training and Testing 
             rm -rf $o
@@ -176,47 +176,50 @@ do
                 --data_dir  $data_dir/$langpair \
                 --output_dir  $o \
                 --representation "en:onehot,$src_lang:$representation"  \
+                --enc_rnn_size 1024 \
+                --dec_rnn_size 1024 \
                 --max_epochs 30 >> $o/train.log 2>&1 
     
                 #--representation $representation \
                 #--start_from $restore_epoch_number \
 
-            echo 'End: ' $expname $langpair $representation 
+            echo 'End: ' $dataset $expname $langpair $representation 
     
         done 
     done     
 
 done 
 
-#############################################################################################
-##################### EVALUATE SPECIFIC ITERATION #################
-#############################################################################################
-
-#dataset='news_2015_indic'
+##############################################################################################
+###################### EVALUATE SPECIFIC ITERATION #################
+##############################################################################################
+#
+#dataset='news_2015'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
-#for prefix in `echo  014`
+#for prefix in `echo  020 026`
 #do 
 #
-#for expname in `echo 1_multilingual_shared_decoder`
+#for expname in `echo 100_test_refactor`
 #do 
 #
 #    ######## Experiment loop starts here ########
 #
 #    #for langpair in `echo en-hi en-bn en-ta en-kn`
 #    #for langpair in `echo hi-en bn-en ta-en kn-en`
-#    for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
+#    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
+#    for langpair in `echo en-bn`
 #    do
 #        src_lang=`echo $langpair | cut -f 1 -d '-'`
 #        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
 #    
 #        #for representation in `echo onehot phonetic`
-#        for representation in `echo phonetic onehot_shared`
+#        for representation in `echo onehot`
 #        do 
 #            #### output directory to select 
 #            ### for bilingual experiments 
-#            #o=$output_dir/$expname/$representation/$langpair
+#            o=$output_dir/$expname/$representation/$langpair
 #
 #            ### for multilingual experiments  (en-indic)
 #            #o=$output_dir/$expname/$representation/en-indic
@@ -225,9 +228,9 @@ done
 #            #o=$output_dir/$expname/$representation/indic-en
 #            
 #            #### for multilingual experiments  (indic-indic)
-#            o=$output_dir/$expname/$representation/indic-indic
+#            #o=$output_dir/$expname/$representation/indic-indic
 #
-#            echo 'Start: ' $expname $langpair $representation 
+#            echo 'Start: ' $dataset $expname $langpair $representation 
 #    
 #            #### Evaluation starts 
 #            
@@ -248,14 +251,14 @@ done
 #                    -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
 #                     > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
 #    
-#            echo 'End: ' $expname $langpair $representation 
+#            echo 'End: ' $dataset $expname $langpair $representation 
 #    
 #        done 
 #    done     
 #done 
 #done
 
-#dataset='news_2015_indic'
+#dataset='news_2015_reversed'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
@@ -275,7 +278,7 @@ done
 #
 #        #### output directory to select 
 #        #### for bilingual experiments 
-#        #o=$output_dir/$expname/$representation/$langpair
+#        o=$output_dir/$expname/$representation/$langpair
 #
 #        #### for multilingual experiments  (en-indic)
 #        #o=$output_dir/$expname/$representation/en-indic
@@ -284,9 +287,9 @@ done
 #        #o=$output_dir/$expname/$representation/indic-en
 #        
 #        ##### for multilingual experiments  (indic-indic)
-#        o=$output_dir/$expname/$representation/indic-indic
+#        #o=$output_dir/$expname/$representation/indic-indic
 #
-#        echo 'Start: ' $expname $langpair $representation 
+#        echo 'Start: ' $dataset $expname $langpair $representation 
 #    
 #        #### Evaluation starts 
 #        
@@ -307,12 +310,10 @@ done
 #                -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
 #                 > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
 #    
-#        echo 'End: ' $expname $langpair $representation 
+#        echo 'End: ' $dataset $expname $langpair $representation 
 #done  <<CONFIG
-#1_multilingual_shared_decoder|phonetic|kn-hi|014|5.28773880005
-#1_multilingual_shared_decoder|phonetic|hi-kn|014|5.28773880005
-#1_multilingual_shared_decoder|phonetic|bn-ta|014|5.28773880005
-#1_multilingual_shared_decoder|phonetic|ta-bn|014|5.28773880005
+#1_bilingual_512|onehot|hi-en|005|0.465554982424
+#1_bilingual_256|onehot|hi-en|010|0.473042696714
 #CONFIG
 
 #1_multilingual_shared_decoder|onehot_shared|kn-hi|014|5.27229315042
@@ -366,6 +367,8 @@ done
 #            true 
 #        fi 
 #
+#        echo 'Start: ' $dataset $expname $langpair $representation 
+#
 #        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
 #            --lang_pair $langpair \
 #            --beam_size 5 \
@@ -375,6 +378,8 @@ done
 #            --in_fname    "$data_dir/$langpair/test/$langpair" \
 #            --out_fname   "/home/development/anoop/tmp/test.$tgt_lang"
 #            #--out_fname   "$o/outputs/${prefix}test.nbest.$langpair.$tgt_lang"
+#
+#        echo 'End: ' $dataset $expname $langpair $representation 
 #
 #done  <<CONFIG
 #1_multilingual_shared_decoder|onehot_shared|kn-hi|014|5.27229315042
