@@ -42,13 +42,15 @@ if __name__ == '__main__' :
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
+    parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
+
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
-    parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
-    parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
+    parser.add_argument('--enc_rnn_size', type = int, default = 512, help = 'size of output of encoder RNN')
+    parser.add_argument('--dec_rnn_size', type = int, default = 512, help = 'size of output of dec RNN')
 
     parser.add_argument('--max_seq_length', type = int, default = 30, help = 'maximum sequence length')
-    parser.add_argument('--batch_size', type = int, default = 64, help = 'size of each batch used in training')
-    parser.add_argument('--max_epochs', type = int, default = 64, help = 'maximum number of epochs')
+    parser.add_argument('--batch_size', type = int, default = 32, help = 'size of each batch used in training')
+    parser.add_argument('--max_epochs', type = int, default = 30, help = 'maximum number of epochs')
     parser.add_argument('--learning_rate', type = float, default = 0.001, help = 'learning rate of Adam Optimizer')
     parser.add_argument('--dropout_keep_prob', type = float, default = 0.5, help = 'keep probablity for the dropout layers')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
@@ -88,6 +90,8 @@ if __name__ == '__main__' :
 
     ## architecture
     enc_type = args.enc_type
+    separate_output_embedding = args.separate_output_embedding
+
     embedding_size = args.embedding_size
     enc_rnn_size = args.enc_rnn_size
     dec_rnn_size = args.dec_rnn_size
@@ -226,7 +230,9 @@ if __name__ == '__main__' :
     ###################################################################
 
     # Creating Model object
-    model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,enc_type,embedding_size,enc_rnn_size,dec_rnn_size) # Pass parameters
+    model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,
+            embedding_size,enc_rnn_size,dec_rnn_size, 
+            enc_type,separate_output_embedding) # Pass parameters
 
     ## Creating placeholder for sequences, masks and lengths and dropout keep probability 
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)

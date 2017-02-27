@@ -6,10 +6,10 @@ from tensorflow.python.ops import rnn, rnn_cell
 
 class AttentionModel():
 
-    def __init__(self,mapping,representation,max_sequence_length,enc_type,embedding_size,enc_rnn_size,dec_rnn_size):
+    def __init__(self,mapping,representation,max_sequence_length,
+                    embedding_size,enc_rnn_size,dec_rnn_size,
+                    enc_type=False,separate_output_embedding=False):
 
-        self.mapping = mapping
-        self.representation=representation
         self.max_sequence_length = max_sequence_length
         self.enc_type = enc_type 
 
@@ -19,10 +19,9 @@ class AttentionModel():
 
         self.lang_list = self.mapping.keys()
 
-        self.vocab_size={}
-        for lang in self.lang_list: 
-            self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
-   
+        self.mapping = mapping
+        self.representation=representation
+
         ### use shared decoders or not
         print 'Using a shared decoder for all target languages'
         self.is_shared_decoder=True
@@ -32,10 +31,15 @@ class AttentionModel():
         ### do u want separate input and output embedding vectors (for the same language)
         ### Value should be False. 
         ### Set to True only to experiment for indic-indic pair where input embedding  is phonetic (experimental support)
+        self.separate_output_embedding=separate_output_embedding
         #print 'Using separate input and output embeddings'
         #self.separate_output_embedding=True
         print 'Using the same embedding for input and output'
         self.separate_output_embedding=False
+
+        self.vocab_size={}
+        for lang in self.lang_list: 
+            self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
 
         max_val = 0.1
 
@@ -82,7 +86,8 @@ class AttentionModel():
             self.embed_outb=self.embed_b
         else:            
 
-            out_representation='onehot_shared'
+            out_representation='onehot_shared'  ### output side uses onehot_shared representation
+
             self.out_bitvector_embeddings={}
             self.out_bitvector_embedding_size={}
             for lang in self.lang_list:

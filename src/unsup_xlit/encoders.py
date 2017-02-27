@@ -70,6 +70,7 @@ class CNNEncoder(Encoder):
         self.embedding_size=embedding_size
         self.num_filters=num_filters
         self.max_sequence_length=max_sequence_length 
+        self.maxpool_width=4
 
         self.W=[]
         self.b=[]
@@ -99,7 +100,7 @@ class CNNEncoder(Encoder):
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
-                    ksize=[1, self.max_sequence_length, 1, 1],
+                    ksize=[1, self.maxpool_width, 1, 1],
                     strides=[1, 1, 1, 1],
                     padding='SAME',
                     name="pool")

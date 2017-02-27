@@ -31,6 +31,8 @@ if __name__ == '__main__' :
     parser.add_argument('--max_seq_length', type = int, default = 30, help = 'maximum sequence length')
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
+    parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
+
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
     parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
     parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
