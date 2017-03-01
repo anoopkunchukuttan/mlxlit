@@ -17,10 +17,10 @@ class AttentionModel():
         self.enc_rnn_size = enc_rnn_size
         self.dec_rnn_size = dec_rnn_size
 
-        self.lang_list = self.mapping.keys()
-
         self.mapping = mapping
         self.representation=representation
+
+        self.lang_list = self.mapping.keys()
 
         ### use shared decoders or not
         print 'Using a shared decoder for all target languages'
@@ -32,10 +32,15 @@ class AttentionModel():
         ### Value should be False. 
         ### Set to True only to experiment for indic-indic pair where input embedding  is phonetic (experimental support)
         self.separate_output_embedding=separate_output_embedding
+        if self.separate_output_embedding: 
+            print 'Using separate input and output embeddings'
+        else: 
+            print 'Using the same embedding for input and output'
+
         #print 'Using separate input and output embeddings'
         #self.separate_output_embedding=True
-        print 'Using the same embedding for input and output'
-        self.separate_output_embedding=False
+        #print 'Using the same embedding for input and output'
+        #self.separate_output_embedding=False
 
         self.vocab_size={}
         for lang in self.lang_list: 
@@ -422,7 +427,6 @@ class AttentionModel():
         final_outputs=None
         final_scores=None
 
-        print 'start stepping'
         for i in range(self.max_sequence_length):
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])

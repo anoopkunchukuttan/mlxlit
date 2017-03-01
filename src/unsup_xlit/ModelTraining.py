@@ -208,6 +208,7 @@ if __name__ == '__main__' :
     print 'Vocabulary Statitics'
     for lang in all_langs: 
         print '{}: {}'.format(lang,mapping[lang].get_vocab_size())
+    sys.stdout.flush()
 
     # Reading parallel Validation data
     parallel_valid_data = dict()
@@ -291,6 +292,7 @@ if __name__ == '__main__' :
     final_saver = tf.train.Saver()
 
     print "Done with creating graph. Starting session"
+    sys.stdout.flush()
 
     #Start Session
     config = tf.ConfigProto()
@@ -436,6 +438,10 @@ if __name__ == '__main__' :
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
                     "\t Number of training steps: {}".format(steps)
+
+            print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
+                    "\t Time of completion: {}".format(time.asctime())
+
             sys.stdout.flush()
 
     # save final model

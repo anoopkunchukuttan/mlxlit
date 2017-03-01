@@ -17,6 +17,8 @@ from indicnlp import loader
 
 if __name__ == '__main__' :
 
+    print 'Process started at: ' + time.asctime()
+
     #### Load Indic NLP Library ###
     ## Note: Environment variable: INDIC_RESOURCES_PATH must be set
     loader.load()
@@ -152,6 +154,7 @@ if __name__ == '__main__' :
     #    Interacting with model and creating computation graph        #
     ###################################################################
 
+    print "Start graph creation"
     # Creating Model object
     model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,enc_type,embedding_size,enc_rnn_size,dec_rnn_size) # Pass parameters
 
@@ -182,7 +185,19 @@ if __name__ == '__main__' :
     source_lang = lang_pair[0]
     target_lang = lang_pair[1]
     sequences, _, sequence_lengths = test_data.get_data()
+
+    test_start_time=time.time()
     predicted_sequences_ids, predicted_scores = sess.run([outputs, outputs_scores], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
+    test_end_time=time.time()
+
+    natoms = sequences.shape[0]*max_sequence_length
+    print 'Number of atoms: {}'.format(natoms)
+    print 'Number of sequences: {}'format(sequences.shape[0])
+    print 'Time taken (s): {}'.format(test_end_time-test_start_time)
+    print 'Decoding speed: {} atoms/s, {} sequences/s'.format(
+                        (test_end_time-test_start_time)/natoms,
+                        (test_end_time-test_start_time)/sequences.shape[0]
+                    )
 
     with codecs.open(out_fname,'w','utf-8') as outfile: 
         for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
@@ -191,3 +206,4 @@ if __name__ == '__main__' :
                 sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
                 outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 
+    print 'Process terminated at: ' + time.asctime()
