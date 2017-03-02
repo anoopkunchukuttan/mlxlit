@@ -5,6 +5,7 @@ import codecs
 import itertools as it
 import pickle 
 import numpy as np
+import calendar,time
 
 import AttentionModel
 import Mapping
@@ -31,13 +32,14 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--max_seq_length', type = int, default = 30, help = 'maximum sequence length')
+    parser.add_argument('--batch_size', type = int, default = 32, help = 'size of each batch used in training')
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
     parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
-    parser.add_argument('--enc_rnn_size', type = int, default = 256, help = 'size of output of encoder RNN')
-    parser.add_argument('--dec_rnn_size', type = int, default = 256, help = 'size of output of dec RNN')
+    parser.add_argument('--enc_rnn_size', type = int, default = 512, help = 'size of output of encoder RNN')
+    parser.add_argument('--dec_rnn_size', type = int, default = 512, help = 'size of output of dec RNN')
     parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
 
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
@@ -59,22 +61,29 @@ if __name__ == '__main__' :
     print '========== Parameters end ============='
 
     #Parsing arguments
-    max_sequence_length = args.max_seq_length
-
-    enc_type = args.enc_type
-    embedding_size = args.embedding_size
-    enc_rnn_size = args.enc_rnn_size
-    dec_rnn_size = args.dec_rnn_size
-    representation = None
-
-    beam_size_val= args.beam_size
-    topn_val = args.topn
-
+    ## paths and directories
     model_fname=args.model_fname
     mapping_dir = args.mapping_dir
     data_dir = args.data_dir
     in_fname=args.in_fname
     out_fname=args.out_fname
+
+    ## architecture
+    enc_type = args.enc_type
+    separate_output_embedding = args.separate_output_embedding
+
+    embedding_size = args.embedding_size
+    enc_rnn_size = args.enc_rnn_size
+    dec_rnn_size = args.dec_rnn_size
+    representation = None
+
+    ## other hyperparameters  
+    max_sequence_length = args.max_seq_length
+    batch_size = args.batch_size 
+
+    ## decoding
+    beam_size_val= args.beam_size
+    topn_val = args.topn
 
     # Setting the language parameters
     lang_pair=tuple(args.lang_pair.split('-'))
@@ -92,7 +101,7 @@ if __name__ == '__main__' :
         representation = dict([ x.split(':') for x in args.representation.split(',') ])
 
     ## Print Representation and Mappings 
-    print 'Represenation'
+    print 'Representation'
     print representation 
 
     ## Creating mapping object to store char-id mappings
@@ -148,7 +157,19 @@ if __name__ == '__main__' :
     print 'Mapping'
     print mapping
 
+    print 'Vocabulary Statitics'
+    for lang in lang_pair: 
+        print '{}: {}'.format(lang,mapping[lang].get_vocab_size())
+
     test_data = MonoDataReader.MonoDataReader(lang_pair[0], in_fname,mapping[lang_pair[0]],max_sequence_length)
+
+    print 'Mapping Again'
+    print mapping
+
+    print 'Vocabulary Statitics Again'
+    for lang in lang_pair: 
+        print '{}: {}'.format(lang,mapping[lang].get_vocab_size())
+    sys.stdout.flush()
 
     ###################################################################
     #    Interacting with model and creating computation graph        #
@@ -156,7 +177,10 @@ if __name__ == '__main__' :
 
     print "Start graph creation"
     # Creating Model object
-    model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,enc_type,embedding_size,enc_rnn_size,dec_rnn_size) # Pass parameters
+    model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,
+            embedding_size,enc_rnn_size,dec_rnn_size,
+            enc_type,separate_output_embedding)
+    # Pass parameters
 
     ## Creating placeholder for sequences, masks and lengths and dropout keep probability 
     batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
@@ -186,23 +210,47 @@ if __name__ == '__main__' :
     target_lang = lang_pair[1]
     sequences, _, sequence_lengths = test_data.get_data()
 
-    test_start_time=time.time()
-    predicted_sequences_ids, predicted_scores = sess.run([outputs, outputs_scores], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
-    test_end_time=time.time()
+    test_time=0.0
+    predicted_sequences_ids_list=[]
+    predicted_scores_list=[]
+
+    print 'starting execution'
+    for start in xrange(0,sequences.shape[0],batch_size):
+        end = min(start+batch_size,sequences.shape[0])
+
+        batch_start_time=time.time()
+
+        data_sequences=sequences[start:end,:]
+        data_sequence_lengths=sequence_lengths[start:end]
+
+        b_sequences_ids, b_scores = sess.run([outputs, outputs_scores], 
+                feed_dict={batch_sequences: data_sequences, batch_sequence_lengths: data_sequence_lengths, 
+                    beam_size: beam_size_val, topn: topn_val})
+        predicted_sequences_ids_list.append(b_sequences_ids)
+        predicted_scores_list.append(b_scores)
+
+        batch_end_time=time.time()
+        test_time+=(batch_end_time-batch_start_time)
+
+        print 'Decoded {} of {} sequences'.format(end,sequences.shape[0])
+        sys.stdout.flush()
+
+    predicted_sequences_ids=np.concatenate(predicted_sequences_ids_list,axis=0)
+    predicted_scores=np.concatenate(predicted_scores_list,axis=0)
 
     natoms = sequences.shape[0]*max_sequence_length
     print 'Number of atoms: {}'.format(natoms)
-    print 'Number of sequences: {}'format(sequences.shape[0])
-    print 'Time taken (s): {}'.format(test_end_time-test_start_time)
+    print 'Number of sequences: {}'.format(sequences.shape[0])
+    print 'Time taken (s): {}'.format(test_time)
     print 'Decoding speed: {} atoms/s, {} sequences/s'.format(
-                        (test_end_time-test_start_time)/natoms,
-                        (test_end_time-test_start_time)/sequences.shape[0]
+                        natoms/test_time,
+                        sequences.shape[0]/test_time,
                     )
 
     with codecs.open(out_fname,'w','utf-8') as outfile: 
         for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
-            for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
-                sent=[mapping[target_lang].get_char(x,target_lang) for x in predicted_sequence_ids]
+            for rank, sequence_at_rank in enumerate(all_sent_predictions): 
+                sent=[mapping[target_lang].get_char(x,target_lang) for x in sequence_at_rank]
                 sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
                 outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
 

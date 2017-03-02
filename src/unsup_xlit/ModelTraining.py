@@ -98,10 +98,10 @@ if __name__ == '__main__' :
     representation = None
 
     ## additional hyperparameters 
+    max_sequence_length = args.max_seq_length
     batch_size = args.batch_size
     max_epochs = args.max_epochs
     learning_rate = args.learning_rate
-    max_sequence_length = args.max_seq_length
     infer_every = args.infer_every
     dropout_keep_prob_val = args.dropout_keep_prob
 

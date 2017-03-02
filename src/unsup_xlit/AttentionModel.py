@@ -8,7 +8,7 @@ class AttentionModel():
 
     def __init__(self,mapping,representation,max_sequence_length,
                     embedding_size,enc_rnn_size,dec_rnn_size,
-                    enc_type=False,separate_output_embedding=False):
+                    enc_type='cnn',separate_output_embedding=False):
 
         self.max_sequence_length = max_sequence_length
         self.enc_type = enc_type 
