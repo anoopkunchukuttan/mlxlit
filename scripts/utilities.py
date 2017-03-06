@@ -24,6 +24,26 @@ def convert_output_format(infname,outfname):
                 read_monolingual_corpus(infname))
         )
 
+def read_validloss_from_log(log_fname):
+
+    valid_loss=[]
+    with codecs.open(log_fname,'r','utf-8') as log_file: 
+        for line in log_file: 
+            if line.find('Epochs Completed')>=0 and \
+               line.find('Validation loss')>=0:   
+                score=float(line.split(':')[-1].strip())
+                epoch_n=line.split(':')[1].replace(
+                    'Validation loss','').strip()
+                valid_loss.append((epoch_n,score))
+                                   
+    return valid_loss
+
+def find_min_iter(log_fname):
+    valid_loss=read_validloss_from_log(log_fname)
+
+    min_epoch=min(valid_loss,key=lambda x:x[1])
+    print min_epoch[0]
+
 ### Methods for parsing n-best lists
 def parse_nbest_line(line):
     """
@@ -79,6 +99,7 @@ if __name__=='__main__':
     commands={
             'convert_output_format': convert_output_format,
             'transfer_pivot_translate': transfer_pivot_translate,
+            'find_min_iter':find_min_iter, 
     }
 
     commands[sys.argv[1]](*sys.argv[2:])

@@ -124,7 +124,7 @@ if __name__ == '__main__' :
 
     all_langs=list(mll)
     ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-    #all_langs.append('hi')
+    all_langs.append('hi')
     
     test_langs=parallel_train_langs 
 
@@ -191,7 +191,11 @@ if __name__ == '__main__' :
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
     
     ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-    #mapping['hi'].lang_list.add('hi')
+    mapping['hi'].lang_list.add('hi')
+
+    ### add language code to vocabulary
+    #for lang in all_langs: 
+    #    mapping[lang].get_index('@@{}@@'.format(lang),lang)
 
     ## complete vocabulary creation
     for lang in all_langs: 
