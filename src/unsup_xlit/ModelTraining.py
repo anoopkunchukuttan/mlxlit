@@ -3,23 +3,19 @@ import os
 import sys
 import codecs
 
+import itertools as it
+import tensorflow as tf
+import numpy as np
+
 import Model
 import AttentionModel
 import Mapping
 import MonoDataReader
 import ParallelDataReader
-
-import itertools as it
-import tensorflow as tf
-import numpy as np
+import utilities
 
 import calendar,time
 from indicnlp import loader
-
-def formatted_timeinterval(seconds):
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    return "%d:%02d:%02d" % (h, m, s)
 
 if __name__ == '__main__' :
 
@@ -43,6 +39,10 @@ if __name__ == '__main__' :
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
     parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
+    parser.add_argument('--prefix_tgtlang', action='store_true', default = False,
+            help = 'Prefix the input sequence with the language code for the target language')
+    parser.add_argument('--prefix_srclang', action='store_true', default = False,
+            help = 'Prefix the input sequence with the language code for the source language')
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
     parser.add_argument('--enc_rnn_size', type = int, default = 512, help = 'size of output of encoder RNN')
@@ -91,6 +91,8 @@ if __name__ == '__main__' :
     ## architecture
     enc_type = args.enc_type
     separate_output_embedding = args.separate_output_embedding
+    prefix_tgtlang = args.prefix_tgtlang
+    prefix_srclang = args.prefix_srclang
 
     embedding_size = args.embedding_size
     enc_rnn_size = args.enc_rnn_size
@@ -124,7 +126,7 @@ if __name__ == '__main__' :
 
     all_langs=list(mll)
     ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-    all_langs.append('hi')
+    #all_langs.append('hi')
     
     test_langs=parallel_train_langs 
 
@@ -177,11 +179,18 @@ if __name__ == '__main__' :
         elif representation[lang]=='onehot': 
             mapping[lang]=Mapping.CharacterMapping()
 
+    ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
+    #mapping['hi'].lang_list.add('hi')
+
     ## Print Representation and Mappings 
     print 'Mapping'
     print mapping
 
     print 'Start Reading Data'
+
+    ## add language code to vocabulary
+    for lang in all_langs: 
+        mapping[lang].get_index(Mapping.create_special_token(lang),lang)
 
     # Reading Parallel Training data
     parallel_train_data = dict()
@@ -189,13 +198,6 @@ if __name__ == '__main__' :
         file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
         parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
             file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
-    
-    ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-    mapping['hi'].lang_list.add('hi')
-
-    ### add language code to vocabulary
-    #for lang in all_langs: 
-    #    mapping[lang].get_index('@@{}@@'.format(lang),lang)
 
     ## complete vocabulary creation
     for lang in all_langs: 
@@ -335,6 +337,13 @@ if __name__ == '__main__' :
 
             sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
             
+            if prefix_tgtlang: 
+                sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(sequences,sequence_masks,sequence_lengths, 
+                                                            lang2,mapping[lang2])
+            if prefix_srclang: 
+                sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(sequences,sequence_masks,sequence_lengths, 
+                                                            lang1,mapping[lang1])
+
             _, step_loss = sess.run(sup_optimizer[opti_lang], feed_dict = {
                 batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
                 batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
@@ -362,7 +371,21 @@ if __name__ == '__main__' :
             valid_start_time=time.time()
             validation_loss = 0.0
             for lang_pair in parallel_valid_langs:
+
+                lang1=lang_pair[0]
+                lang2=lang_pair[1]
+
                 sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_valid_data[lang_pair].get_data()
+
+                if prefix_tgtlang: 
+                    sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
+                                                sequences,sequence_masks,sequence_lengths,
+                                                lang2,mapping[lang2])
+                if prefix_srclang: 
+                    sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
+                                                sequences,sequence_masks,sequence_lengths,
+                                                lang1,mapping[lang1])
+
                 validation_loss += sess.run(validation_seq_loss[lang_pair], feed_dict = {
                     batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
                     batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
@@ -402,7 +425,17 @@ if __name__ == '__main__' :
                     for lang_pair in test_langs:
                         source_lang = lang_pair[0]
                         target_lang = lang_pair[1]
-                        sequences, _, sequence_lengths = test_data[lang_pair].get_data()
+                        sequences,sequence_masks, sequence_lengths = test_data[lang_pair].get_data()
+
+                        if prefix_tgtlang: 
+                            sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
+                                                        sequences,sequence_masks,sequence_lengths,
+                                                        target_lang,mapping[target_lang])
+
+                        if prefix_srclang: 
+                            sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
+                                                        sequences,sequence_masks,sequence_lengths,
+                                                        source_lang,mapping[source_lang])
 
                         predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
 
@@ -429,10 +462,10 @@ if __name__ == '__main__' :
                 saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
-                    "\t Time (min)::: train> {} valid> {} test> {}".format(
-                            formatted_timeinterval(epoch_train_time), 
-                            formatted_timeinterval(epoch_valid_time), 
-                            formatted_timeinterval(epoch_test_time)
+                    "\t Time (hh:mm:ss)::: train> {} valid> {} test> {}".format(
+                            utilities.formatted_timeinterval(epoch_train_time), 
+                            utilities.formatted_timeinterval(epoch_valid_time), 
+                            utilities.formatted_timeinterval(epoch_test_time)
                             )
 
             ## update epoch variables 
@@ -457,6 +490,6 @@ if __name__ == '__main__' :
 
     #### Print total training time
     end_time=time.time()
-    print 'Total Time for Training (minutes) : {}'.format(formatted_timeinterval(end_time-start_time))
+    print 'Total Time for Training (hh:mm:ss) : {}'.format(utilities.formatted_timeinterval(end_time-start_time))
 
     print 'Process terminated at: ' + time.asctime()

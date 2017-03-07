@@ -36,6 +36,10 @@ if __name__ == '__main__' :
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
     parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
+    parser.add_argument('--prefix_tgtlang', action='store_true', default = False,
+            help = 'Prefix the input sequence with the language code for the target language')
+    parser.add_argument('--prefix_srclang', action='store_true', default = False,
+            help = 'Prefix the input sequence with the language code for the source language')
 
     parser.add_argument('--embedding_size', type = int, default = 256, help = 'size of character representation')
     parser.add_argument('--enc_rnn_size', type = int, default = 512, help = 'size of output of encoder RNN')
@@ -71,6 +75,8 @@ if __name__ == '__main__' :
     ## architecture
     enc_type = args.enc_type
     separate_output_embedding = args.separate_output_embedding
+    prefix_tgtlang = args.prefix_tgtlang
+    prefix_srclang = args.prefix_srclang
 
     embedding_size = args.embedding_size
     enc_rnn_size = args.enc_rnn_size
@@ -208,7 +214,7 @@ if __name__ == '__main__' :
 
     source_lang = lang_pair[0]
     target_lang = lang_pair[1]
-    sequences, _, sequence_lengths = test_data.get_data()
+    sequences, sequence_masks, sequence_lengths = test_data.get_data()
 
     test_time=0.0
     predicted_sequences_ids_list=[]
@@ -221,7 +227,18 @@ if __name__ == '__main__' :
         batch_start_time=time.time()
 
         data_sequences=sequences[start:end,:]
+        data_sequence_masks=sequences[start:end,:]
         data_sequence_lengths=sequence_lengths[start:end]
+
+        if prefix_tgtlang: 
+            data_sequences,data_sequence_masks,data_sequence_lengths = Mapping.prefix_sequence_with_token(
+                    data_sequences,data_sequence_masks,data_sequence_lengths, 
+                    target_lang,mapping[target_lang])
+
+        if prefix_srclang: 
+            data_sequences,data_sequence_masks,data_sequence_lengths = Mapping.prefix_sequence_with_token(
+                    data_sequences,data_sequence_masks,data_sequence_lengths, 
+                    source_lang,mapping[source_lang])
 
         b_sequences_ids, b_scores = sess.run([outputs, outputs_scores], 
                 feed_dict={batch_sequences: data_sequences, batch_sequence_lengths: data_sequence_lengths, 
@@ -241,7 +258,7 @@ if __name__ == '__main__' :
     natoms = sequences.shape[0]*max_sequence_length
     print 'Number of atoms: {}'.format(natoms)
     print 'Number of sequences: {}'.format(sequences.shape[0])
-    print 'Time taken (s): {}'.format(test_time)
+    print 'Time taken (hh:mm:ss): {}'.format(utilities.formatted_timeinterval(test_time))
     print 'Decoding speed: {} atoms/s, {} sequences/s'.format(
                         natoms/test_time,
                         sequences.shape[0]/test_time,

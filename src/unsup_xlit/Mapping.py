@@ -5,6 +5,21 @@ import json
 from indicnlp.script import  indic_scripts as isc
 from indicnlp import langinfo as li
 
+def create_special_token(token): 
+    return '@@{}@@'.format(token)
+
+def prefix_sequence_with_token(sequences,sequence_masks,sequence_lengths,token,mapping):
+
+        lang_vec=np.ones([sequences.shape[0],1])*mapping.get_index(create_special_token(token))
+        sd=np.concatenate([lang_vec,sequences],axis=1)[:,:-1]
+    
+        mask_vec=np.ones([sequences.shape[0],1])
+        sm=np.concatenate([mask_vec,sequence_masks],axis=1)[:,:-1]
+    
+        sl=sequence_lengths+np.ones(sequences.shape[0])
+    
+        return sd, sm, sl
+
 class Mapping():
 
     GO=u'GO'
@@ -107,7 +122,7 @@ class IndicPhoneticMapping(Mapping):
 
     def get_index(self,c,lang=None): 
 
-        if len(c)==1 and isc.in_coordinated_range(c,lang): 
+        if len(c)==1 and lang is not None and isc.in_coordinated_range(c,lang): 
             pid=isc.get_offset(c,lang)
             c_hi=isc.offset_to_char(pid,'hi')
             if (not self.update_mode) and (c_hi not in self.vocab_c2i): 
