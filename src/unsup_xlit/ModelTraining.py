@@ -126,6 +126,7 @@ if __name__ == '__main__' :
 
     all_langs=list(mll)
     ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
+    #print 'Enabled zeroshot mode'
     #all_langs.append('hi')
     
     test_langs=parallel_train_langs 
