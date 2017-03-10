@@ -228,7 +228,7 @@ if __name__ == '__main__' :
         batch_start_time=time.time()
 
         data_sequences=sequences[start:end,:]
-        data_sequence_masks=sequences[start:end,:]
+        data_sequence_masks=sequence_masks[start:end,:]
         data_sequence_lengths=sequence_lengths[start:end]
 
         if prefix_tgtlang: 

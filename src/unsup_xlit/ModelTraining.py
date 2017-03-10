@@ -438,7 +438,30 @@ if __name__ == '__main__' :
                                                         sequences,sequence_masks,sequence_lengths,
                                                         source_lang,mapping[source_lang])
 
-                        predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
+                        #predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
+
+                        predicted_sequences_ids_list=[]
+                        predicted_scores_list=[]
+                        for start in xrange(0,sequences.shape[0],batch_size):
+                            end = min(start+batch_size,sequences.shape[0])
+
+                            batch_start_time=time.time()
+
+                            data_sequences=sequences[start:end,:]
+                            data_sequence_masks=sequence_masks[start:end,:]
+                            data_sequence_lengths=sequence_lengths[start:end]
+
+                            b_sequences_ids, b_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], 
+                                feed_dict={batch_sequences: data_sequences, batch_sequence_lengths: data_sequence_lengths, 
+                                            beam_size: beam_size_val, topn: topn_val
+                                           }
+                                )
+
+                            predicted_sequences_ids_list.append(b_sequences_ids)
+                            predicted_scores_list.append(b_scores)
+
+                        predicted_sequences_ids=np.concatenate(predicted_sequences_ids_list,axis=0)
+                        predicted_scores=np.concatenate(predicted_scores_list,axis=0)
 
                         ## write output to file 
                         out_fname=out_folder+str(completed_epochs).zfill(3)+'test.nbest.'+source_lang+'-'+target_lang+'.'+target_lang
