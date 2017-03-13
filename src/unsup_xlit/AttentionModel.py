@@ -28,6 +28,12 @@ class AttentionModel():
         #print 'Using a separate decoder for each target language'
         #self.is_shared_decoder=False
 
+        ### share output layers or not
+        print 'Using a different output layer for all target languages'
+        self.use_shared_output=False
+        #print 'Using a shared output for all target languages'
+        #self.use_shared_output=True
+
         ### do u want separate input and output embedding vectors (for the same language)
         ### Value should be False. 
         ### Set to True only to experiment for indic-indic pair where input embedding  is phonetic (experimental support)
@@ -156,10 +162,22 @@ class AttentionModel():
         # Output decoder to vocab_size vector
         self.out_W = dict()
         self.out_b = dict()
+
+        ### shared output params
+            #  a hackish way of getting one of the shared languages Be careful - this may break - only experimental use!
+        shared_outvocab_size = self.vocab_size[[ l!='en' for l in self.lang_list][0]]
+        out_W_shared = tf.Variable(tf.random_uniform([self.dec_rnn_size,shared_outvocab_size], -1*max_val, max_val), 
+                                    name='out_W_shared')
+        out_b_shared = tf.Variable(tf.constant(0., shape = [shared_outvocab_size]), name='out_b_shared')
+
         for lang in self.lang_list:
-            self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size[lang]], -1*max_val, max_val),
-                                            name='out_W_{}'.format(lang))
-            self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size[lang]]),
+            if self.use_shared_output: 
+                self.out_W[lang]=out_W_shared
+                self.out_b[lang]=out_b_shared
+            else: 
+                self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size[lang]], -1*max_val, max_val),
+                                                name='out_W_{}'.format(lang))
+                self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size[lang]]),
                                             name='out_b_{}'.format(lang))
         
         ## Hack for zeroshot transliteratoin for Model 2 (en-indic)               
