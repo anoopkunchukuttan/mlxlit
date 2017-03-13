@@ -152,7 +152,7 @@ if __name__ == '__main__' :
     ### load the mapping
     mapping={}
 
-    for lang in lang_pair: 
+    for lang in representation.keys(): 
         if representation[lang]=='onehot': 
             mapping[lang]=Mapping.CharacterMapping()
         else: 
@@ -165,7 +165,7 @@ if __name__ == '__main__' :
     print mapping
 
     print 'Vocabulary Statitics'
-    for lang in lang_pair: 
+    for lang in representation.keys(): 
         print '{}: {}'.format(lang,mapping[lang].get_vocab_size())
 
     test_data = MonoDataReader.MonoDataReader(lang_pair[0], in_fname,mapping[lang_pair[0]],max_sequence_length)
@@ -174,7 +174,7 @@ if __name__ == '__main__' :
     print mapping
 
     print 'Vocabulary Statitics Again'
-    for lang in lang_pair: 
+    for lang in representation.keys(): 
         print '{}: {}'.format(lang,mapping[lang].get_vocab_size())
     sys.stdout.flush()
 

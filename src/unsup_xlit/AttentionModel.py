@@ -161,6 +161,12 @@ class AttentionModel():
                                             name='out_W_{}'.format(lang))
             self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size[lang]]),
                                             name='out_b_{}'.format(lang))
+        
+        ## Hack for zeroshot transliteratoin for Model 2 (en-indic)               
+        #self.out_W['hi']=(self.out_W['ta']+self.out_W['kn']+self.out_W['bn'])/3.0
+        #self.out_b['hi']=(self.out_b['ta']+self.out_b['kn']+self.out_b['bn'])/3.0
+        #self.out_W['hi']=self.out_W['bn']
+        #self.out_b['hi']=self.out_b['bn']
 
         ## Attention mechanism paramters
         ## size of the context vector (will be twice encoder cell output size for bidirectional RNN)
