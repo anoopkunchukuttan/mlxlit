@@ -43,11 +43,6 @@ class AttentionModel():
         else: 
             print 'Using the same embedding for input and output'
 
-        #print 'Using separate input and output embeddings'
-        #self.separate_output_embedding=True
-        #print 'Using the same embedding for input and output'
-        #self.separate_output_embedding=False
-
         self.vocab_size={}
         for lang in self.lang_list: 
             self.vocab_size[lang] = self.mapping[lang].get_vocab_size()
@@ -165,7 +160,7 @@ class AttentionModel():
 
         ### shared output params
             #  a hackish way of getting one of the shared languages Be careful - this may break - only experimental use!
-        shared_outvocab_size = self.vocab_size[[ l!='en' for l in self.lang_list][0]]
+        shared_outvocab_size = self.vocab_size[filter(lambda l:l!='en', self.lang_list)[0]]
         out_W_shared = tf.Variable(tf.random_uniform([self.dec_rnn_size,shared_outvocab_size], -1*max_val, max_val), 
                                     name='out_W_shared')
         out_b_shared = tf.Variable(tf.constant(0., shape = [shared_outvocab_size]), name='out_b_shared')
