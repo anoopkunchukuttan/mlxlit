@@ -61,6 +61,7 @@ if __name__ == '__main__' :
     parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the final epochs from previous runs')
 
     parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
+    parser.add_argument('--shared_mapping_class', type = str, default = 'IndicPhoneticMapping',  help = 'class to be used for shared mapping. Possible values: IndicPhoneticMapping, CharacterMapping')
 
     args = parser.parse_args()
 
@@ -98,6 +99,7 @@ if __name__ == '__main__' :
     enc_rnn_size = args.enc_rnn_size
     dec_rnn_size = args.dec_rnn_size
     representation = None
+    shared_mapping_class = args.shared_mapping_class
 
     ## additional hyperparameters 
     max_sequence_length = args.max_seq_length
@@ -169,14 +171,13 @@ if __name__ == '__main__' :
 
     # Creating mapping object to store char-id mappings
     mapping={}
-    shared_phonetic_mapping = Mapping.IndicPhoneticMapping()
-    shared_onehot_mapping = Mapping.IndicPhoneticMapping()
+    shared_mapping_obj = Mapping.get_mapping_instance(shared_mapping_class) 
 
     for lang in all_langs: 
         if representation[lang] in ['phonetic','onehot_and_phonetic']: 
-            mapping[lang]=shared_phonetic_mapping 
+            mapping[lang]=shared_mapping_obj
         elif representation[lang]=='onehot_shared': 
-            mapping[lang]=shared_onehot_mapping
+            mapping[lang]=shared_mapping_obj
         elif representation[lang]=='onehot': 
             mapping[lang]=Mapping.CharacterMapping()
 

@@ -4,10 +4,10 @@
 
 #### prepraring bilingual data 
 
-inbase_parallel="/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/slavic_latin-ar"
-outbase="/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/slavic_latin-ar"
+inbase_parallel="/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/ar-slavic_latin"
+outbase="/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/ar-slavic_latin"
 
-for lang_pair in `echo cs-ar sk-ar sl-ar pl-ar`
+for lang_pair in `echo ar-cs ar-sk ar-sl ar-pl`
 do 
     src_lang=`echo "$lang_pair" | cut -f 1 -d '-' `
     tgt_lang=`echo "$lang_pair" | cut -f 2 -d '-' ` 
@@ -42,7 +42,7 @@ done
 
 ####### prepraring multilingual data from bilingual data 
 
-for lang_pair in `echo cs-ar sk-ar sl-ar pl-ar`
+for lang_pair in `echo ar-cs ar-sk ar-sl ar-pl`
 do 
     mkdir -p $outbase/multi-conf/{mono_train,parallel_train,parallel_valid,test}
 

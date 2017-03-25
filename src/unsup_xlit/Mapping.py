@@ -20,6 +20,13 @@ def prefix_sequence_with_token(sequences,sequence_masks,sequence_lengths,token,m
     
         return sd, sm, sl
 
+def get_mapping_instance(mapping_class): 
+
+    if mapping_class == 'CharacterMapping': 
+        return CharacterMapping()
+    elif mapping_class == 'IndicPhoneticMapping':
+        return IndicPhoneticMapping()
+
 class Mapping():
 
     GO=u'GO'
