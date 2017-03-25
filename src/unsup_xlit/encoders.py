@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.python.ops import rnn, rnn_cell
 
 class Encoder(object):
 
@@ -22,14 +21,14 @@ class SimpleRnnEncoder(Encoder):
         self.embedding_size=embedding_size
         self.rnn_size=rnn_size 
         self.max_sequence_length=max_sequence_length 
-        self.encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+        self.encoder_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_size,state_is_tuple=False)
 
     def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
-        cell=rnn_cell.DropoutWrapper(self.encoder_cell,output_keep_prob=dropout_keep_prob)
-        enc_outputs, states = rnn.rnn(cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        cell=tf.nn.rnn_cell.DropoutWrapper(self.encoder_cell,output_keep_prob=dropout_keep_prob)
+        enc_outputs, states = tf.nn.rnn(cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
         return states, enc_outputs
 
     def get_output_size(self): 
@@ -44,16 +43,16 @@ class BidirectionalRnnEncoder(Encoder):
         self.embedding_size=embedding_size
         self.rnn_size=rnn_size 
         self.max_sequence_length=max_sequence_length 
-        self.fw_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
-        self.bw_encoder_cell = rnn_cell.BasicLSTMCell(rnn_size)
+        self.fw_encoder_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_size,state_is_tuple=False)
+        self.bw_encoder_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_size,state_is_tuple=False)
 
     def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
-        fw_cell=rnn_cell.DropoutWrapper(self.fw_encoder_cell,output_keep_prob=dropout_keep_prob)
-        bw_cell=rnn_cell.DropoutWrapper(self.bw_encoder_cell,output_keep_prob=dropout_keep_prob)
-        enc_outputs, states, _ = rnn.bidirectional_rnn(fw_cell, bw_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
+        fw_cell=tf.nn.rnn_cell.DropoutWrapper(self.fw_encoder_cell,output_keep_prob=dropout_keep_prob)
+        bw_cell=tf.nn.rnn_cell.DropoutWrapper(self.bw_encoder_cell,output_keep_prob=dropout_keep_prob)
+        enc_outputs, states, _ = tf.nn.bidirectional_rnn(fw_cell, bw_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
         return states, enc_outputs
 
     def get_output_size(self): 

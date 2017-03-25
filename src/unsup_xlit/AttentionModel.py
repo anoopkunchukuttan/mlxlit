@@ -2,7 +2,6 @@ import Mapping
 import encoders
 
 import tensorflow as tf
-from tensorflow.python.ops import rnn, rnn_cell
 
 class AttentionModel():
 
@@ -137,14 +136,14 @@ class AttentionModel():
 
         self.decoder_cell = dict()
         with tf.variable_scope('decoder'):
-            shared_decoder=rnn_cell.BasicLSTMCell(dec_rnn_size)
+            shared_decoder=tf.nn.rnn_cell.BasicLSTMCell(dec_rnn_size,state_is_tuple=False)
             for lang in self.lang_list:  ## TODO: can we restrict which languages decoder is created for?
                 if self.is_shared_decoder:
                     #### shared decoder
                     self.decoder_cell[lang] =  shared_decoder 
                 else:
                     #### decoder per language 
-                    self.decoder_cell[lang] = rnn_cell.BasicLSTMCell(dec_rnn_size)
+                    self.decoder_cell[lang] = tf.nn.rnn_cell.BasicLSTMCell(dec_rnn_size)
             self.dec_state_size=self.decoder_cell.values()[0].state_size
        
         ### Encoder state to decoder adapter 
@@ -322,7 +321,7 @@ class AttentionModel():
         state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
 
         loss = 0.0
-        cell = rnn_cell.DropoutWrapper(self.decoder_cell[lang],output_keep_prob=dropout_keep_prob)
+        cell = tf.nn.rnn_cell.DropoutWrapper(self.decoder_cell[lang],output_keep_prob=dropout_keep_prob)
 
         # One step generate one character for each sequence
         for i in range(self.max_sequence_length):
@@ -439,7 +438,7 @@ class AttentionModel():
         prev_scores = tf.tile(tf.constant(0.0,shape=[1,1]),[batch_size*cur_beam_size,1])
         prev_symbols = None
 
-        cell = rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
+        cell = tf.nn.rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
 
         prev_best_outputs=None
 
@@ -539,7 +538,7 @@ class AttentionModel():
     #    state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
     #    outputs=[]
 
-    #    cell = rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
+    #    cell = tf.nn.rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
 
     #    for i in range(self.max_sequence_length):
     #        if(i==0):
