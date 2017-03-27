@@ -308,7 +308,7 @@ if __name__ == '__main__' :
     sess = tf.Session(config=config)
     sess.run(tf.initialize_all_variables())
     if(start_from is not None):
-        saver.restore(sess,'{}/final_model_epochs_{}'.format(output_dir,start_from))
+        saver.restore(sess,'{}/temp_models/my_model-{}'.format(output_dir,start_from))
         completed_epochs=start_from
     
     tf.train.SummaryWriter(log_dir,sess.graph)
@@ -417,10 +417,7 @@ if __name__ == '__main__' :
             if(cont == False or (infer_every > 0 and completed_epochs%infer_every == 0)):
 
                 # If this was the last epoch, output result to final output folder, otherwise to outputs folder
-                if(cont == False):
-                    out_folder = final_output_dir
-                else:
-                    out_folder = outputs_dir
+                out_folder = outputs_dir
 
                 if completed_epochs % infer_every == 0:
                     test_loss=0.0
@@ -482,9 +479,9 @@ if __name__ == '__main__' :
             epoch_test_time=(test_end_time-test_start_time)
 
             # Save current model
-            if(cont == True):
+            #if(cont == True):
                 #if(completed_epochs==1 or (len(validation_losses)>=2 and validation_losses[-1]<validation_losses[-2])):
-                saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
+            saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
                     "\t Time (hh:mm:ss)::: train> {} valid> {} test> {}".format(

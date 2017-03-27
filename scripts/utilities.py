@@ -1,4 +1,4 @@
-import itertools as it 
+import itertools as it, operator 
 import codecs 
 import sys
 
@@ -34,15 +34,36 @@ def read_validloss_from_log(log_fname):
                 score=float(line.split(':')[-1].strip())
                 epoch_n=line.split(':')[1].replace(
                     'Validation loss','').strip()
-                valid_loss.append((epoch_n,score))
+                valid_loss.append(score)
                                    
     return valid_loss
 
-def find_min_iter(log_fname):
+def early_stop_min(log_fname):
     valid_loss=read_validloss_from_log(log_fname)
+    min_epoch=min(enumerate(valid_loss),key=operator.itemgetter(1))
+    print min_epoch[0]+1
 
-    min_epoch=min(valid_loss,key=lambda x:x[1])
-    print min_epoch[0]
+def early_stop_patience(log_fname, patience_str):
+
+    valid_loss=read_validloss_from_log(log_fname)
+    patience=int(patience_str)
+
+    c_pos=0
+    c_min=10000
+
+    while c_pos < len(valid_loss): 
+        p, v = min(     enumerate(valid_loss[  c_pos :   min(c_pos+patience,len(valid_loss))  ]), 
+                        key= operator.itemgetter(1)
+                  )
+        p=c_pos+p
+
+        if v>=c_min: 
+            break
+        else: 
+            c_pos=p
+            c_min=v
+
+    print c_pos+1
 
 ### Methods for parsing n-best lists
 def parse_nbest_line(line):
@@ -96,13 +117,12 @@ def transfer_pivot_translate(output_s_b_fname,output_b_t_fname,output_final_fnam
 
 if __name__=='__main__': 
 
-    commands={
+    commands = {
             'convert_output_format': convert_output_format,
             'transfer_pivot_translate': transfer_pivot_translate,
-            'find_min_iter':find_min_iter, 
+            'early_stop_min': early_stop_min, 
+            'early_stop_patience': early_stop_patience, 
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
 
-   
-    
