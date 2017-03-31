@@ -143,7 +143,7 @@ class AttentionModel():
                     self.decoder_cell[lang] =  shared_decoder 
                 else:
                     #### decoder per language 
-                    self.decoder_cell[lang] = tf.nn.rnn_cell.BasicLSTMCell(dec_rnn_size)
+                    self.decoder_cell[lang] = tf.nn.rnn_cell.BasicLSTMCell(dec_rnn_size,state_is_tuple=False)
             self.dec_state_size=self.decoder_cell.values()[0].state_size
        
         ### Encoder state to decoder adapter 

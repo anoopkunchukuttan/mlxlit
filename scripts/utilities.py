@@ -1,6 +1,7 @@
 import itertools as it, operator 
 import codecs 
-import sys
+import sys,os
+from collections import defaultdict
 
 import numpy as np
 from scipy.misc.common import logsumexp
@@ -24,7 +25,44 @@ def convert_output_format(infname,outfname):
                 read_monolingual_corpus(infname))
         )
 
-def read_validloss_from_log(log_fname):
+
+def read_negacc(maxepoch,dirname,slang,tlang): 
+
+    loss_scores=[]
+
+    for epoch in range(1,maxepoch+1):
+        with codecs.open('{dirname}/{epoch:03d}test.nbest.{slang}-{tlang}.{tlang}.eval'.format(
+                    dirname=dirname,slang=slang,tlang=tlang,epoch=epoch),'r') as resfile:
+            acc=float(resfile.readline().strip().split(':')[1].strip())
+            loss_scores.append(-acc)
+
+    return loss_scores
+
+def read_negacc_multilingual(maxepoch,dirname): 
+
+    ## find the list of all language pairs 
+    lang_pairs=set()
+    for fname in filter(lambda x: x.find('.eval')>=0, os.listdir(dirname)): 
+        lp=tuple(fname.split('/')[-1].split('.')[2].split('-'))
+        lang_pairs.add(lp)
+    
+    print lang_pairs 
+
+    loss_scores=defaultdict(list)
+
+    for slang,tlang in lang_pairs: 
+        for epoch in range(1,maxepoch+1):
+            with codecs.open('{dirname}/{epoch:03d}test.nbest.{slang}-{tlang}.{tlang}.eval'.format(
+                        dirname=dirname,slang=slang,tlang=tlang,epoch=epoch),'r') as resfile:
+                acc=float(resfile.readline().strip().split(':')[1].strip())
+                loss_scores[tuple([slang,tlang])].append(-acc)
+
+    loss_scores_lists=loss_scores.values()
+    ave_loss_scores=map( lambda x:sum(x)/len(x), zip(*loss_scores_lists) )
+
+    return ave_loss_scores
+
+def read_validloss_from_log(maxepoch,log_fname):
 
     valid_loss=[]
     with codecs.open(log_fname,'r','utf-8') as log_file: 
@@ -36,34 +74,57 @@ def read_validloss_from_log(log_fname):
                     'Validation loss','').strip()
                 valid_loss.append(score)
                                    
-    return valid_loss
+    return valid_loss[:min(maxepoch,len(valid_loss))]
 
-def early_stop_min(log_fname):
-    valid_loss=read_validloss_from_log(log_fname)
-    min_epoch=min(enumerate(valid_loss),key=operator.itemgetter(1))
+def early_stop_best(metric,maxepoch,*options):
+    
+    maxepoch=int(maxepoch)
+    
+    loss_scores=None
+
+    if metric=='loss':
+        loss_scores=read_validloss_from_log(maxepoch,*options)
+    elif metric=='accuracy':                 
+        loss_scores=read_negacc(maxepoch,*options)
+
+    min_epoch=min(enumerate(loss_scores),key=operator.itemgetter(1))
     print min_epoch[0]+1
 
-def early_stop_patience(log_fname, patience_str):
+def early_stop_best_multilingual(metric,maxepoch,*options):
+    
+    maxepoch=int(maxepoch)
+    
+    loss_scores=None
 
-    valid_loss=read_validloss_from_log(log_fname)
-    patience=int(patience_str)
+    if metric=='loss':
+        loss_scores=read_validloss_from_log(maxepoch,*options)
+    elif metric=='accuracy':                 
+        loss_scores=read_negacc_multilingual(maxepoch,*options)
 
-    c_pos=0
-    c_min=10000
+    min_epoch=min(enumerate(loss_scores),key=operator.itemgetter(1))
+    print min_epoch[0]+1
 
-    while c_pos < len(valid_loss): 
-        p, v = min(     enumerate(valid_loss[  c_pos :   min(c_pos+patience,len(valid_loss))  ]), 
-                        key= operator.itemgetter(1)
-                  )
-        p=c_pos+p
-
-        if v>=c_min: 
-            break
-        else: 
-            c_pos=p
-            c_min=v
-
-    print c_pos+1
+#def early_stop_patience(log_fname, patience_str):
+#
+#    valid_loss=read_validloss_from_log(log_fname)
+#    patience=int(patience_str)
+#
+#    c_pos=0
+#    c_min=10000
+#
+#    while c_pos < len(valid_loss): 
+#        p, v = min(     enumerate(valid_loss[  c_pos :   min(c_pos+patience,len(valid_loss))  ]), 
+#                        key= operator.itemgetter(1)
+#                  )
+#        p=c_pos+p
+#
+#        if v>=c_min: 
+#            break
+#        else: 
+#            c_pos=p
+#            c_min=v
+#
+#    print c_pos+1
 
 ### Methods for parsing n-best lists
 def parse_nbest_line(line):
@@ -120,8 +181,10 @@ if __name__=='__main__':
     commands = {
             'convert_output_format': convert_output_format,
             'transfer_pivot_translate': transfer_pivot_translate,
-            'early_stop_min': early_stop_min, 
-            'early_stop_patience': early_stop_patience, 
+            'early_stop_best': early_stop_best, 
+            'early_stop_best_multilingual': early_stop_best_multilingual, 
+            #'early_stop_patience': early_stop_patience, 
+            #'test':read_acc_from_newsformat,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
