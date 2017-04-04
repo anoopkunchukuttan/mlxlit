@@ -192,7 +192,8 @@ if __name__ == '__main__' :
 
     ## add language code to vocabulary
     for lang in all_langs: 
-        mapping[lang].get_index(Mapping.create_special_token(lang),lang)
+        if prefix_srclang or prefix_tgtlang: 
+            mapping[lang].get_index(Mapping.create_special_token(lang),lang)
 
     # Reading Parallel Training data
     parallel_train_data = dict()

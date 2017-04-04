@@ -168,6 +168,7 @@ class AttentionModel():
             if self.use_shared_output: 
                 self.out_W[lang]=out_W_shared
                 self.out_b[lang]=out_b_shared
+                pass 
             else: 
                 self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size[lang]], -1*max_val, max_val),
                                                 name='out_W_{}'.format(lang))

@@ -135,7 +135,8 @@ class IndicPhoneticMapping(Mapping):
             if (not self.update_mode) and (c_hi not in self.vocab_c2i): 
                 c_hi=Mapping.UNK
             index=self.vocab_c2i[c_hi]
-            self.indic_i2pid[index]=pid
+            if self.update_mode: 
+                self.indic_i2pid[index]=pid
         else:
             if (not self.update_mode) and (c not in self.vocab_c2i): 
                 c=Mapping.UNK
@@ -182,7 +183,8 @@ class IndicPhoneticMapping(Mapping):
         use phonetic embeddings, else use 1-hot embeddings
         """
 
-        non_phonetic_chars=filter(lambda x: x not in self.indic_i2pid, range(self.get_vocab_size()))
+        #non_phonetic_chars=filter(lambda x: x not in self.indic_i2pid, range(self.get_vocab_size()))
+        non_phonetic_chars=filter(lambda x: x not in self.indic_i2pid, self.vocab_i2c.keys())
         print 'non_phonetic_chars: {}'.format(len(non_phonetic_chars))
         bitvector_embedding=np.zeros((self.get_vocab_size(), isc.PHONETIC_VECTOR_LENGTH+len(non_phonetic_chars)))
 
