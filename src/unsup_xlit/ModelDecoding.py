@@ -46,6 +46,7 @@ if __name__ == '__main__' :
     parser.add_argument('--enc_rnn_size', type = int, default = 512, help = 'size of output of encoder RNN')
     parser.add_argument('--dec_rnn_size', type = int, default = 512, help = 'size of output of dec RNN')
     parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
+    parser.add_argument('--shared_mapping_class', type = str, default = 'IndicPhoneticMapping',  help = 'class to be used for shared mapping. Possible values: IndicPhoneticMapping, CharacterMapping')
 
     parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
     parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
@@ -83,6 +84,7 @@ if __name__ == '__main__' :
     enc_rnn_size = args.enc_rnn_size
     dec_rnn_size = args.dec_rnn_size
     representation = None
+    shared_mapping_class = args.shared_mapping_class
 
     ## other hyperparameters  
     max_sequence_length = args.max_seq_length
@@ -111,52 +113,18 @@ if __name__ == '__main__' :
     print 'Representation'
     print representation 
 
-    ## Creating mapping object to store char-id mappings
-    ##lang_pairs=[lang_pair]
-    ##all_langs=lang_pair
-
-    #for lang in all_langs: 
-    #    representation[lang]='phonetic'
-
-    ###### create vocabulary from loading corpus 
-
-    #mapping={}
-    #shared_phonetic_mapping = Mapping.IndicPhoneticMapping()
-    #shared_onehot_mapping = Mapping.IndicPhoneticMapping()
-
-    #for lang in all_langs: 
-    #    if representation[lang] in ['phonetic','onehot_and_phonetic']: 
-    #        mapping[lang]=shared_phonetic_mapping 
-    #    elif representation[lang]=='onehot_shared': 
-    #        mapping[lang]=shared_onehot_mapping
-    #    elif representation[lang]=='onehot': 
-    #        mapping[lang]=Mapping.CharacterMapping()
-
-    ## Reading Parallel Training data
-    #parallel_train_data = dict()
-    #for lang_pair in lang_pairs: 
-    #    file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
-    #    parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
-    #        file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
-
-    ### complete vocabulary creation
-    #for lang in all_langs:
-    #    mapping[lang].finalize_vocab()
-    #    print lang
-    #    print '{} {}'.format(len(mapping[lang].vocab_i2c), mapping[lang].get_bitvector_embedding_size(representation[lang]))
-    #    #print mapping[lang].vocab_i2c        
-
-    #sys.exit(0)
-
-
     ### load the mapping
     mapping={}
+    shared_mapping_obj = Mapping.get_mapping_instance(shared_mapping_class) 
 
     for lang in representation.keys(): 
-        if representation[lang]=='onehot': 
+        if representation[lang] in ['phonetic','onehot_and_phonetic']: 
+            mapping[lang]=shared_mapping_obj
+        elif representation[lang]=='onehot_shared': 
+            mapping[lang]=shared_mapping_obj
+        elif representation[lang]=='onehot': 
             mapping[lang]=Mapping.CharacterMapping()
-        else: 
-            mapping[lang]=Mapping.IndicPhoneticMapping()        
+
         with open(mapping_dir+'/'+'mapping_'+lang+'.json','r') as mapping_file:     
             mapping[lang].load_mapping(mapping_file)
 

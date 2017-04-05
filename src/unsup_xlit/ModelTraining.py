@@ -36,6 +36,7 @@ if __name__ == '__main__' :
     parser.add_argument('--output_dir', type = str, help = 'output folder name')
 
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
+    parser.add_argument('--unseen_langs', type = str, default = None, help = 'List of languages not seen during training given as: "lang1,lang2,lang3,lang4,..."')
 
     parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
     parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
@@ -117,20 +118,23 @@ if __name__ == '__main__' :
     parallel_train_langs=None
     parallel_valid_langs=None
     test_langs=None
+    unseen_langs=None
     all_langs=None
+    
 
     parallel_train_langs=[ tuple(lp.split('-')) for lp in args.lang_pairs.split(',')]
     parallel_valid_langs=parallel_train_langs
+    unseen_langs= [] if args.unseen_langs is None else (  [ l for l in args.unseen_langs.split(',')] )
 
     mll=set()
     for lp in [list(x) for x in parallel_train_langs]: 
         mll.update(lp)
 
     all_langs=list(mll)
-    ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-    #print 'Enabled zeroshot mode'
-    #all_langs.append('hi')
-    
+
+    ### support for zeroshot transliteration
+    all_langs.extend(unseen_langs)
+
     test_langs=parallel_train_langs 
 
     print 'Parallel Train, Parallel Valid, Test Langs, All Langs'
@@ -181,8 +185,9 @@ if __name__ == '__main__' :
         elif representation[lang]=='onehot': 
             mapping[lang]=Mapping.CharacterMapping()
 
-    ### NOTE: hack for for zero shot transliteration (add hi, which is the unknown language)
-    #mapping['hi'].lang_list.add('hi')
+    ### support for zeroshot transliteration
+    for lang in unseen_langs: 
+        mapping[lang].lang_list.add(lang)
 
     ## Print Representation and Mappings 
     print 'Mapping'
