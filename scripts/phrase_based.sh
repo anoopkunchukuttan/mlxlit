@@ -1,14 +1,24 @@
+#!/bin/bash 
+
+export MLXLIT_BASE=/home/development/anoop/experiments/multilingual_unsup_xlit
+export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
+export XLIT_HOME=$MLXLIT_BASE/src/conll16_unsup_xlit
+export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
 ###Building phrase-based systems
 
+
 ######   make LM  ###
-#lm_dir=$MLXLIT_BASE/results/pbsmt/news_2015_official/lm/
-#data_dir=$MLXLIT_BASE/data/sup/mosesformat/news_2015_official/
+#dataset=slavic_latin-ar 
+#lm_dir=$MLXLIT_BASE/results/pbsmt/$dataset/lm/
+#data_dir=$MLXLIT_BASE/data/sup/mosesformat/$dataset/
 #
-#for lang in `echo hi ta bn kn`
+#mkdir -p $lm_dir
+
+#for lang in `echo cs pl sk sl`
 #do 
 #    ngram-count -wbdiscount -interpolate \
-#        -text $data_dir/en-$lang/train.$lang \
+#        -text $data_dir/ar-$lang/train.$lang \
 #        -lm $lm_dir/$lang.5g.lm \
 #        -order 5 
 #done 
@@ -16,19 +26,27 @@
 
 ###  train models
 
-#parallel --joblog 'new2015official.job.log' --jobs 3 --gnu "nohup time /usr/local/bin/smt/moses_job_scripts/moses_run.sh run_params.en-{}.conf > en-{}.log 2>&1" <<  LANG_PAIRS
-#bn
-#hi
-#kn
-#ta
+#parallel --joblog 'ar-slavic.job.log' --jobs 2 --gnu "nohup time /usr/local/bin/smt/moses_job_scripts/moses_run.sh run_params.ar-{}.conf > ar-{}.log 2>&1" <<  LANG_PAIRS
+#pl
+#cs
+#sk
+#sl
 #LANG_PAIRS
 
-## evaluate 
+#parallel --joblog 'slavic-ar.job.log' --jobs 2 --gnu "nohup time /usr/local/bin/smt/moses_job_scripts/moses_run.sh run_params.{}-ar.conf > {}-ar.log 2>&1" <<  LANG_PAIRS
+#pl
+#cs
+#sk
+#sl
+#LANG_PAIRS
 
-data_dir=$MLXLIT_BASE/data/sup/mosesformat/news_2015_official
-o=$MLXLIT_BASE/results/pbsmt/news_2015_official
+### evaluate 
 
-for langpair in `echo en-bn en-kn en-ta en-hi`
+dataset=slavic_latin-ar
+data_dir=$MLXLIT_BASE/data/sup/mosesformat/$dataset
+o=$MLXLIT_BASE/results/pbsmt/$dataset
+
+for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
 do 
     src_lang=`echo $langpair | cut -f 1 -d '-'`
     tgt_lang=`echo $langpair | cut -f 2 -d '-'`
@@ -49,3 +67,10 @@ do
              > "$o/$langpair/evaluation/test.nbest.${tgt_lang}.eval"
 
 done 
+
+
+######
+###  dir=news_2015_indic  ; find $dir -name '*.eval' | xargs head -1q | cut -f 2 -d ':' | tr -d ' ' ; find $dir -name '*.eval' | cut -f 2 -d '/'
+######
+
+
