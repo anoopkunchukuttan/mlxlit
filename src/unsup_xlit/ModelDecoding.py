@@ -55,7 +55,6 @@ if __name__ == '__main__' :
 
     parser.add_argument('--model_fname', type = str, help = 'model file name')
     parser.add_argument('--mapping_dir', type = str, help = 'directory containing mapping files')
-    parser.add_argument('--data_dir', type = str, help = 'directory containing mapping files')
     parser.add_argument('--in_fname', type = str, help = 'input file')
     parser.add_argument('--out_fname', type = str, help = 'results file')
 
@@ -70,7 +69,6 @@ if __name__ == '__main__' :
     ## paths and directories
     model_fname=args.model_fname
     mapping_dir = args.mapping_dir
-    data_dir = args.data_dir
     in_fname=args.in_fname
     out_fname=args.out_fname
 
