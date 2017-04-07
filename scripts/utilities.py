@@ -50,7 +50,7 @@ def find_lang_pairs(dirname):
 
     return lang_pairs 
 
-def read_negacc_multilingual(maxepoch,dirname): 
+def read_negacc_multilingual(maxepoch,dirname,scale_values=False): 
 
     ## find the list of all language pairs 
     lang_pairs=find_lang_pairs(dirname)
@@ -63,6 +63,13 @@ def read_negacc_multilingual(maxepoch,dirname):
                         dirname=dirname,slang=slang,tlang=tlang,epoch=epoch),'r') as resfile:
                 acc=float(resfile.readline().strip().split(':')[1].strip())
                 loss_scores[tuple([slang,tlang])].append(-acc)
+
+    if scale_values: 
+        for slang,tlang in lang_pairs: 
+            loss_s_t = loss_scores[tuple([slang,tlang])]
+            max_val  = max(loss_s_t)
+            min_val  = min(loss_s_t)
+            loss_scores[tuple([slang,tlang])] = map(lambda x: (x-max_val)/(max_val-min_val), loss_s_t )
 
     loss_scores_lists=loss_scores.values()
     ave_loss_scores=map( lambda x:sum(x)/len(x), zip(*loss_scores_lists) )
@@ -114,6 +121,7 @@ def compute_accuracy(exp_dirname,slang,tlang,maxepoch):
     min_epoch=early_stop_best('accuracy',maxepoch,'{}/{}'.format(exp_dirname,'validation'),slang,tlang)
     #min_epoch=early_stop_best('loss',maxepoch,'{}/{}'.format(exp_dirname,'train.log'),slang,tlang)
     accuracies=read_acc(maxepoch,'{}/{}'.format(exp_dirname,'outputs'),slang,tlang) 
+    #print '{}'.format(min_epoch)
     print '{}|{}'.format(min_epoch, accuracies[min_epoch-1])
 
 def compute_accuracy_multilingual(exp_dirname,maxepoch): 
@@ -122,6 +130,7 @@ def compute_accuracy_multilingual(exp_dirname,maxepoch):
     min_epoch=early_stop_best_multilingual('accuracy',maxepoch,'{}/{}'.format(exp_dirname,'validation'))
     lang_pairs=find_lang_pairs('{}/{}'.format(exp_dirname,'outputs'))
 
+    print '{}'.format(min_epoch)
     for slang,tlang in lang_pairs: 
         accuracies=read_acc(maxepoch,'{}/{}'.format(exp_dirname,'outputs'),slang,tlang) 
         print '{}|{}|{}|{}'.format(slang,tlang,min_epoch, accuracies[min_epoch-1])
