@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd 
+import sys
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -123,11 +124,11 @@ def run_generate_analysis(basedir,exp_conf_fname):
     #    exp_check = rec['exp'] in ['2_multilingual','2_bilingual'] 
     #
     #    ## krishna
-    #    #dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
+    #    dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
     #
-    #    ### balaram 
-    #    #dataset_check = rec['dataset'] in ['slavic_latin-ar', 'news_2015_indic', 'news_2015_official' ] 
-    #    dataset_check = rec['dataset'] in ['news_2015_indic', 'news_2015_official' ] 
+    #    #### balaram 
+    #    ##dataset_check = rec['dataset'] in ['slavic_latin-ar', 'news_2015_indic', 'news_2015_official' ] 
+    #    #dataset_check = rec['dataset'] in ['news_2015_indic', 'news_2015_official' ] 
     #
     #    return exp_check and dataset_check 
 
