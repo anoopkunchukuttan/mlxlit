@@ -83,6 +83,11 @@ def plot_confusion_matrix(confusion_mat_fname,tlang,image_fname):
 
 def transliteration_analysis(exp_dirname,epoch,ref_fname,slang,tlang):
     """
+    exp_dirname: base directory of the experiment 
+    epoch: model to use - indicated by the epoch number 
+    ref_fname: reference file 
+    slang: source langauge 
+    tlang: target language 
     """
    
     ## generate file names 
@@ -118,10 +123,11 @@ def run_generate_analysis(basedir,exp_conf_fname):
     #    exp_check = rec['exp'] in ['2_multilingual','2_bilingual'] 
     #
     #    ## krishna
-    #    dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
+    #    #dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
     #
     #    ### balaram 
     #    #dataset_check = rec['dataset'] in ['slavic_latin-ar', 'news_2015_indic', 'news_2015_official' ] 
+    #    dataset_check = rec['dataset'] in ['news_2015_indic', 'news_2015_official' ] 
     #
     #    return exp_check and dataset_check 
 
@@ -179,12 +185,12 @@ def run_generate_analysis(basedir,exp_conf_fname):
         print 'Starting Experiment: ' + exp_dirname
         transliteration_analysis(exp_dirname,rec['epoch'],ref_fname,rec['src'],rec['tgt'])
         print 'Finished Experiment: ' + exp_dirname
+        sys.stdout.flush()
 
 if __name__ == '__main__': 
    
     run_generate_analysis('/home/development/anoop/experiments/multilingual_unsup_xlit','results_with_accuracy.csv') 
 
-    #base_dir=''
     #datasets=[
     #                 'ar-slavic_latin',
     #                 'slavic_latin-ar',
@@ -193,13 +199,11 @@ if __name__ == '__main__':
     #                 'news_2015_reversed',
     #             ]
 
-    #exp_conf_fname=''
-
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
-    #        10,
+    #        11,
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/news_2015_indic/hi-bn/test.bn',
     #        'hi',
     #        'bn',
     #        )
-    #    
+        
