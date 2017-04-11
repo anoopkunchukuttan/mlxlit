@@ -128,9 +128,9 @@ def compute_accuracy_multilingual(exp_dirname,maxepoch):
 
     maxepoch=int(maxepoch)
     min_epoch=early_stop_best_multilingual('accuracy',maxepoch,'{}/{}'.format(exp_dirname,'validation'))
-    lang_pairs=find_lang_pairs('{}/{}'.format(exp_dirname,'outputs'))
-
     print '{}'.format(min_epoch)
+
+    lang_pairs=find_lang_pairs('{}/{}'.format(exp_dirname,'outputs'))
     for slang,tlang in lang_pairs: 
         accuracies=read_acc(maxepoch,'{}/{}'.format(exp_dirname,'outputs'),slang,tlang) 
         print '{}|{}|{}|{}'.format(slang,tlang,min_epoch, accuracies[min_epoch-1])
