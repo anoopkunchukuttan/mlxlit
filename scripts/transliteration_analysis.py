@@ -85,17 +85,17 @@ def transliteration_analysis(exp_dirname,epoch,ref_fname,slang,tlang):
     """
     """
    
-    ### generate file names 
-    #out_fname='{exp_dirname}/outputs/{epoch:03d}test.nbest.{slang}-{tlang}.{tlang}'.format(
-    #    exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
-    #out1b_fname='{exp_dirname}/outputs/{epoch:03d}test.1best.{slang}-{tlang}.{tlang}'.format(
-    #    exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+    ## generate file names 
+    out_fname='{exp_dirname}/outputs/{epoch:03d}test.nbest.{slang}-{tlang}.{tlang}'.format(
+        exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+    out1b_fname='{exp_dirname}/outputs/{epoch:03d}test.1best.{slang}-{tlang}.{tlang}'.format(
+        exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
 
-    ### save the output 
-    #nwutil.convert_to_1best_format(out_fname,out1b_fname)
-    #out_dirname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}'.format(
-    #    exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
-    #align.save_analysis_artifacts(ref_fname, out1b_fname, tlang, out_dirname)
+    ## save the output 
+    nwutil.convert_to_1best_format(out_fname,out1b_fname)
+    out_dirname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}'.format(
+        exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+    align.save_analysis_artifacts(ref_fname, out1b_fname, tlang, out_dirname)
 
     ## plot the confusion matrix  
     confmat_fname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}/confusion_mat.pickle'.format( 
@@ -104,13 +104,102 @@ def transliteration_analysis(exp_dirname,epoch,ref_fname,slang,tlang):
         exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang) 
     plot_confusion_matrix(confmat_fname,tlang,confmat_img_fname)
 
-if __name__ == '__main__': 
 
-    transliteration_analysis(
-            '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
-            32,
-            '/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/news_2015_indic/bn-hi/test.hi',
-            'bn',
-            'hi',
-            )
-        
+def run_generate_analysis(basedir,exp_conf_fname): 
+    """
+     Run experiments to generate analysis files 
+    """
+
+    #def should_do_exp(rec): 
+    #    """
+    #    Filtering the list of experiments: this needs to be configured while running experiments 
+    #    """
+    #
+    #    exp_check = rec['exp'] in ['2_multilingual','2_bilingual'] 
+    #
+    #    ## krishna
+    #    dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
+    #
+    #    ### balaram 
+    #    #dataset_check = rec['dataset'] in ['slavic_latin-ar', 'news_2015_indic', 'news_2015_official' ] 
+    #
+    #    return exp_check and dataset_check 
+
+    #def should_do_exp(rec): 
+    #    """
+    #     Always do experiments 
+    #    """
+    #    return True 
+
+    def should_do_exp(rec): 
+        """
+         Never do experiments 
+        """
+        return False 
+    
+
+    def get_edir(rec): 
+        """
+         get the name of the basedir for the experiment 
+        """
+    
+        if (rec['exp'].find('bilingual')>=0) or (rec['exp'].find('moses')>=0) : 
+            return '{}-{}'.format(rec['src'],rec['tgt'])
+
+        elif rec['exp'].find('multilingual')>=0: 
+            if rec['dataset'] in ['ar-slavic_latin','slavic_latin-ar']: 
+                return 'multi-conf'
+            elif rec['dataset'] == 'news_2015_official' : 
+                return 'en-indic'
+            elif rec['dataset'] == 'news_2015_reversed' : 
+                return 'indic-en'
+            elif rec['dataset'] == 'news_2015_indic' : 
+                return 'indic-indic'
+            else: 
+                print 'Unknown experiment' 
+
+        else: 
+            print 'Invalid configuration'
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+
+    
+    for rec in filter( should_do_exp, [x[1] for x in conf_df.iterrows()]): 
+
+        edir=get_edir(rec)
+
+        exp_dirname = '{basedir}/results/sup/{dataset}/{exp}/{rep}/{edir}'.format(
+                basedir=basedir,dataset=rec['dataset'],rep=rec['representation'],exp=rec['exp'],edir=edir)
+
+        ref_fname = '{basedir}/data/sup/mosesformat/{dataset}/{slang}-{tlang}/test.{tlang}'.format(
+                basedir=basedir,dataset=rec['dataset'],slang=rec['src'],tlang=rec['tgt'])
+
+        print 'Starting Experiment: ' + exp_dirname
+        transliteration_analysis(exp_dirname,rec['epoch'],ref_fname,rec['src'],rec['tgt'])
+        print 'Finished Experiment: ' + exp_dirname
+
+if __name__ == '__main__': 
+   
+    run_generate_analysis('/home/development/anoop/experiments/multilingual_unsup_xlit','results_with_accuracy.csv') 
+
+    #base_dir=''
+    #datasets=[
+    #                 'ar-slavic_latin',
+    #                 'slavic_latin-ar',
+    #                 'news_2015_official',
+    #                 'news_2015_indic',
+    #                 'news_2015_reversed',
+    #             ]
+
+    #exp_conf_fname=''
+
+    #transliteration_analysis(
+    #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
+    #        10,
+    #        '/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/news_2015_indic/hi-bn/test.bn',
+    #        'hi',
+    #        'bn',
+    #        )
+    #    
