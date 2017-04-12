@@ -24,7 +24,7 @@ def get_column_name(x,tlang):
     else: 
         return x
 
-def plot_confusion_matrix(confusion_mat_fname,tlang,image_fname):
+def plot_confusion_matrix(confusion_df,tlang,image_fname):
     """
     Plots a heat map of the confusion matrix of character alignments. 
     
@@ -38,7 +38,6 @@ def plot_confusion_matrix(confusion_mat_fname,tlang,image_fname):
     #matplotlib.rc('font', family='Lohit Kannada') 
     matplotlib.rcParams.update({'font.size': 8})
 
-    confusion_df=pd.read_pickle(confusion_mat_fname)
 
     schar=list(confusion_df.index)
     tchar=list(confusion_df.columns)
@@ -69,8 +68,8 @@ def plot_confusion_matrix(confusion_mat_fname,tlang,image_fname):
     
     plt.figure(figsize=(20,10))
 
-    #plt.pcolor(data,cmap=plt.cm.gray_r,edgecolors='k')
-    plt.pcolor(data,cmap=plt.cm.hot_r,edgecolors='k')
+    plt.pcolor(data,cmap=plt.cm.gray_r,edgecolors='k')
+    #plt.pcolor(data,cmap=plt.cm.hot_r,edgecolors='k')
     
     #plt.pcolor(data,edgecolors='k')
     plt.colorbar()
@@ -108,8 +107,161 @@ def transliteration_analysis(exp_dirname,epoch,ref_fname,slang,tlang):
         exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang) 
     confmat_img_fname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}/confusion_mat.png'.format( 
         exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang) 
-    plot_confusion_matrix(confmat_fname,tlang,confmat_img_fname)
 
+    conf_mat=pd.read_pickle(confmat_fname)
+    plot_confusion_matrix(conf_mat,tlang,confmat_img_fname)
+
+def transliteration_comparison(exp_dirname1,epoch1,
+                exp_dirname2,epoch2,
+                ref_fname,
+                slang,tlang,
+                out_fname):
+
+    confmat_1_fname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}/confusion_mat.pickle'.format( 
+        exp_dirname=exp_dirname1,epoch=epoch1,slang=slang,tlang=tlang) 
+    confmat_1_df=pd.read_pickle(confmat_1_fname)
+
+    confmat_2_fname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}/confusion_mat.pickle'.format( 
+        exp_dirname=exp_dirname2,epoch=epoch2,slang=slang,tlang=tlang) 
+    confmat_2_df=pd.read_pickle(confmat_2_fname)
+
+    diff_conf_mat=  confmat_2_df.subtract(confmat_1_df,fill_value=0.0)#.divide(confmat_2_df,fill_value=0.0)
+    diff_conf_mat=diff_conf_mat.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    plot_confusion_matrix(diff_conf_mat,tlang,out_fname)
+
+
+########  Commands #############
+
+# krishna 
+krishna_datasets=[
+                     'ar-slavic_latin',
+                     'news_2015_reversed',
+        ]
+
+# balaram
+balaram_datasets=[
+                     'slavic_latin-ar',
+                     'news_2015_official',
+                     'news_2015_indic',
+        ]
+
+def get_edir(rec): 
+    """
+     get the name of the basedir for the experiment 
+    """
+
+    if (rec['exp'].find('bilingual')>=0) or (rec['exp'].find('moses')>=0) : 
+        return '{}-{}'.format(rec['src'],rec['tgt'])
+
+    elif rec['exp'].find('multilingual')>=0: 
+        if rec['dataset'] in ['ar-slavic_latin','slavic_latin-ar']: 
+            return 'multi-conf'
+        elif rec['dataset'] == 'news_2015_official' : 
+            return 'en-indic'
+        elif rec['dataset'] == 'news_2015_reversed' : 
+            return 'indic-en'
+        elif rec['dataset'] == 'news_2015_indic' : 
+            return 'indic-indic'
+        else: 
+            print 'Unknown experiment' 
+
+    else: 
+        print 'Invalid configuration'
+
+
+def run_comparison_bi_multi(basedir,exp_conf_fname,out_dirname): 
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+
+    print 'Comparing bilingual vs multilingual experiments ' 
+    datasets=[]
+
+
+    print 'Getting to work ' 
+    for dataset in datasets: 
+
+        print '** Experiments for dataset: *** ' + dataset 
+
+        ## multilingual
+        multi_df=conf_df.query('dataset=="{dataset}" & exp=="2_multilingual" & representation=="onehot_shared"'.format(dataset=dataset))
+        ## bilingual
+        bi_df=conf_df.query('dataset=="{dataset}" & exp=="2_bilingual" & representation=="onehot"'.format(dataset=dataset))
+
+        for multi_rec in  [ x[1] for x in multi_df.iterrows() ]: 
+
+            slang,tlang=(multi_rec['src'],multi_rec['tgt'])
+
+            bi_rec=bi_df.query('src=="{}" & tgt=="{}"'.format(slang,tlang))
+            bi_rec=bi_rec.iterrows().next()[1]
+
+            multi_dirname = '{basedir}/results/sup/{dataset}/2_multilingual/onehot_shared/{edir}'.format(
+                    basedir=basedir,dataset=dataset,edir=get_edir(multi_rec))
+            bi_dirname = '{basedir}/results/sup/{dataset}/2_bilingual/onehot/{edir}'.format(
+                    basedir=basedir,dataset=dataset,edir=get_edir(bi_rec))
+
+            ref_fname = '{basedir}/data/sup/mosesformat/{dataset}/{slang}-{tlang}/test.{tlang}'.format(
+                basedir=basedir,dataset=dataset,slang=slang,tlang=tlang)
+
+            out_fname = '{}/{}-{}-{}.png'.format(out_dirname,dataset,slang,tlang)
+
+            print 'Starting: {} {} {}'.format(dataset,slang,tlang)
+
+            transliteration_comparison(multi_dirname,multi_rec['epoch'],
+                bi_dirname,bi_rec['epoch'],
+                ref_fname,
+                slang,tlang,
+                out_fname)
+
+            print 'Finished: {} {} {}'.format(dataset,slang,tlang)
+
+def run_comparison_onehot_phonetic(basedir,exp_conf_fname,out_dirname): 
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+
+    print ' Comparing onehot vs phonetic experiments ' 
+    datasets=[]
+
+    print 'Getting to work ' 
+    for dataset in datasets: 
+
+        print '** Experiments for dataset: *** ' + dataset 
+
+        ## phonetic
+        phonetic_df=conf_df.query('dataset=="{dataset}" & exp=="2_multilingual" & representation=="phonetic"'.format(dataset=dataset))
+        ## onehot
+        onehot_df=conf_df.query('dataset=="{dataset}" & exp=="2_multilingual" & representation=="onehot_shared"'.format(dataset=dataset))
+
+        for phonetic_rec in  [ x[1] for x in phonetic_df.iterrows() ]: 
+
+            slang,tlang=(phonetic_rec['src'],phonetic_rec['tgt'])
+
+            onehot_rec=onehot_df.query('src=="{}" & tgt=="{}"'.format(slang,tlang))
+            onehot_rec=onehot_rec.iterrows().next()[1]
+
+            phonetic_dirname = '{basedir}/results/sup/{dataset}/2_multilingual/phonetic/{edir}'.format(
+                    basedir=basedir,dataset=dataset,edir=get_edir(phonetic_rec))
+            onehot_dirname = '{basedir}/results/sup/{dataset}/2_multilingual/onehot_shared/{edir}'.format(
+                    basedir=basedir,dataset=dataset,edir=get_edir(onehot_rec))
+
+            ref_fname = '{basedir}/data/sup/mosesformat/{dataset}/{slang}-{tlang}/test.{tlang}'.format(
+                basedir=basedir,dataset=dataset,slang=slang,tlang=tlang)
+
+            out_fname = '{}/{}-{}-{}.png'.format(out_dirname,dataset,slang,tlang)
+
+
+            print 'Starting: {} {} {}'.format(dataset,slang,tlang)
+
+            transliteration_comparison(phonetic_dirname,phonetic_rec['epoch'],
+                onehot_dirname,onehot_rec['epoch'],
+                ref_fname,
+                slang,tlang,
+                out_fname)
+
+            print 'Finished: {} {} {}'.format(dataset,slang,tlang)
 
 def run_generate_analysis(basedir,exp_conf_fname): 
     """
@@ -145,28 +297,6 @@ def run_generate_analysis(basedir,exp_conf_fname):
         return False 
     
 
-    def get_edir(rec): 
-        """
-         get the name of the basedir for the experiment 
-        """
-    
-        if (rec['exp'].find('bilingual')>=0) or (rec['exp'].find('moses')>=0) : 
-            return '{}-{}'.format(rec['src'],rec['tgt'])
-
-        elif rec['exp'].find('multilingual')>=0: 
-            if rec['dataset'] in ['ar-slavic_latin','slavic_latin-ar']: 
-                return 'multi-conf'
-            elif rec['dataset'] == 'news_2015_official' : 
-                return 'en-indic'
-            elif rec['dataset'] == 'news_2015_reversed' : 
-                return 'indic-en'
-            elif rec['dataset'] == 'news_2015_indic' : 
-                return 'indic-indic'
-            else: 
-                print 'Unknown experiment' 
-
-        else: 
-            print 'Invalid configuration'
 
     ## read the list of experiments to be analyzed 
     print 'Read list of experiments' 
@@ -189,16 +319,20 @@ def run_generate_analysis(basedir,exp_conf_fname):
         sys.stdout.flush()
 
 if __name__ == '__main__': 
-   
-    run_generate_analysis('/home/development/anoop/experiments/multilingual_unsup_xlit','results_with_accuracy.csv') 
+  
+    basedir='/home/development/anoop/experiments/multilingual_unsup_xlit'
+    exp_list='results_with_accuracy.csv'
 
-    #datasets=[
-    #                 'ar-slavic_latin',
-    #                 'slavic_latin-ar',
-    #                 'news_2015_official',
-    #                 'news_2015_indic',
-    #                 'news_2015_reversed',
-    #             ]
+    ## command to generate the analysis files for each experiment 
+    #run_generate_analysis(basedir,exp_list) 
+
+    ## command to compare bilingual and multilingual experiments 
+    ## mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
+    #run_comparison_bi_multi(basedir,exp_list,'{}/analysis/bi_vs_multi/heat_maps'.format(basedir)) 
+
+    ## command to compare bilingual and multilingual experiments 
+    ## /home/development/anoop/experiments/multilingual_unsup_xlit/analysis/onehot_vs_phonetic/heat_maps/
+    run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
@@ -208,3 +342,14 @@ if __name__ == '__main__':
     #        'bn',
     #        )
         
+    #transliteration_comparison(
+    #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_multilingual/onehot_shared/indic-en',
+    #        37,
+    #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_bilingual/onehot/hi-en',
+    #        22,
+    #        '/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/news_2015_reversed/hi-en/test.en',
+    #        'hi',
+    #        'en',
+    #        'out.png'
+    #        )
+
