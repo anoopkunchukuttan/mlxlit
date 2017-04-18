@@ -351,7 +351,11 @@ def run_gather_metrics(basedir,exp_conf_fname,aug_exp_conf_name):
         sys.stdout.flush()
 
     new_df=pd.DataFrame(augmented_data)
-    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+['mf1','mrr','map','a10'],index=False)
+    new_cols=[]
+    for col in ['mf1','mrr','map','a10']: 
+        if col not in list(conf_df.columns): 
+            new_cols.append(col)
+    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
 
 def run_lang_ind_err_rates(basedir,exp_conf_fname,aug_exp_conf_name): 
     """
@@ -394,7 +398,11 @@ def run_lang_ind_err_rates(basedir,exp_conf_fname,aug_exp_conf_name):
         sys.stdout.flush()
 
     new_df=pd.DataFrame(augmented_data)
-    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+['char_erate','ins_erate','del_erate','sub_erate'],index=False)
+    new_cols=[]
+    for col in ['char_erate','ins_erate','del_erate','sub_erate']: 
+        if col not in list(conf_df.columns): 
+            new_cols.append(col)
+    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
 
 if __name__ == '__main__': 
   
