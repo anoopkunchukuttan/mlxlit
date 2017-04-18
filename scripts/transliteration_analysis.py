@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd 
-import sys
+import sys, os, codecs 
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -48,18 +48,6 @@ def plot_confusion_matrix(confusion_df,tlang,image_fname):
     
     data=confusion_df.as_matrix()
     
-    # # normalize along row
-    # sums=np.sum(data,axis=1)
-    # data=data.T/sums
-    # data=data.T
-    
-    # # normalize along column
-    # sums=np.sum(data,axis=0)
-    # data=data/sums
-    
-    #s=np.sum(data)
-    #data=data/s
-    
     columns=list(confusion_df.columns)
     col_names=[ get_column_name(x,tlang) for x in columns]
 
@@ -71,7 +59,6 @@ def plot_confusion_matrix(confusion_df,tlang,image_fname):
     plt.pcolor(data,cmap=plt.cm.gray_r,edgecolors='k')
     #plt.pcolor(data,cmap=plt.cm.hot_r,edgecolors='k')
     
-    #plt.pcolor(data,edgecolors='k')
     plt.colorbar()
     plt.xticks(np.arange(0,len(col_names))+0.5,col_names,rotation='vertical')
     plt.yticks(np.arange(0,len(row_names))+0.5,row_names)
@@ -129,7 +116,6 @@ def transliteration_comparison(exp_dirname1,epoch1,
     diff_conf_mat=diff_conf_mat.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     plot_confusion_matrix(diff_conf_mat,tlang,out_fname)
 
-
 ########  Commands #############
 
 # krishna 
@@ -154,16 +140,17 @@ def get_edir(rec):
         return '{}-{}'.format(rec['src'],rec['tgt'])
 
     elif rec['exp'].find('multilingual')>=0: 
-        if rec['dataset'] in ['ar-slavic_latin','slavic_latin-ar']: 
-            return 'multi-conf'
-        elif rec['dataset'] == 'news_2015_official' : 
-            return 'en-indic'
-        elif rec['dataset'] == 'news_2015_reversed' : 
-            return 'indic-en'
-        elif rec['dataset'] == 'news_2015_indic' : 
-            return 'indic-indic'
-        else: 
-            print 'Unknown experiment' 
+        return 'multi-conf'
+        #if rec['dataset'] in ['ar-slavic_latin','slavic_latin-ar']: 
+        #    return 'multi-conf'
+        #elif rec['dataset'] == 'news_2015_official' : 
+        #    return 'en-indic'
+        #elif rec['dataset'] == 'news_2015_reversed' : 
+        #    return 'indic-en'
+        #elif rec['dataset'] == 'news_2015_indic' : 
+        #    return 'indic-indic'
+        #else: 
+        #    print 'Unknown experiment' 
 
     else: 
         print 'Invalid configuration'
@@ -318,6 +305,97 @@ def run_generate_analysis(basedir,exp_conf_fname):
         print 'Finished Experiment: ' + exp_dirname
         sys.stdout.flush()
 
+def run_gather_metrics(basedir,exp_conf_fname,aug_exp_conf_name):
+    """
+     Run experiments to generate metrics for the experiments 
+     It generates these error rates for experiments for which analysis has already been done, 
+     and generates an new exp_conf_name with columns for the new experiments 
+    """
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+    
+    augmented_data=[]
+
+    for rec in [x[1] for x in conf_df.iterrows()]: 
+
+        slang=rec['src']
+        tlang=rec['tgt']
+        epoch=rec['epoch']
+
+        edir=get_edir(rec)
+
+        exp_dirname = '{basedir}/results/sup/{dataset}/{exp}/{rep}/{edir}'.format(
+                basedir=basedir,dataset=rec['dataset'],rep=rec['representation'],exp=rec['exp'],edir=edir)
+
+        #  001test.nbest.bn-en.en
+        eval_fname='{exp_dirname}/outputs/{epoch:03d}test.nbest.{slang}-{tlang}.{tlang}.eval'.format(
+            exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+
+        print 'Starting Experiment: ' + eval_fname
+
+        if os.path.isfile(eval_fname):
+            with codecs.open(eval_fname,'r','utf-8') as evalfile: 
+        
+                scores=[ float(l.strip().split(':')[1].strip())  for l in evalfile.readlines()] 
+                rec['acc']=scores[0]
+                rec['mf1']=scores[1]
+                rec['mrr']=scores[2]
+                rec['map']=scores[3]
+                rec['a10']=scores[4]
+
+        augmented_data.append(rec)
+        print 'Finished Experiment: ' + exp_dirname
+        print 
+        sys.stdout.flush()
+
+    new_df=pd.DataFrame(augmented_data)
+    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+['mf1','mrr','map','a10'],index=False)
+
+def run_lang_ind_err_rates(basedir,exp_conf_fname,aug_exp_conf_name): 
+    """
+     Run experiments to generate language independent error rates 
+     It generates these error rates for experiments for which analysis has already been done, 
+     and generates an new exp_conf_name with columns for the new experiments 
+    """
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+    
+    augmented_data=[]
+
+    for rec in [x[1] for x in conf_df.iterrows()]: 
+
+        slang=rec['src']
+        tlang=rec['tgt']
+        epoch=rec['epoch']
+
+        edir=get_edir(rec)
+
+        exp_dirname = '{basedir}/results/sup/{dataset}/{exp}/{rep}/{edir}'.format(
+                basedir=basedir,dataset=rec['dataset'],rep=rec['representation'],exp=rec['exp'],edir=edir)
+
+        out_dirname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}'.format(
+            exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+
+        print 'Starting Experiment: ' + exp_dirname
+        if os.path.isdir(out_dirname): 
+            a_df=align.read_align_count_file('{}/alignment_count.csv'.format(out_dirname))
+            rec['char_erate']=align.char_error_rate(a_df) 
+            rec['ins_erate']=align.ins_error_rate(a_df) 
+            rec['del_erate']=align.del_error_rate(a_df) 
+            rec['sub_erate']=align.sub_error_rate(a_df)
+        
+        augmented_data.append(rec)
+        print 'Finished Experiment: ' + exp_dirname
+        print 
+        sys.stdout.flush()
+
+    new_df=pd.DataFrame(augmented_data)
+    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+['char_erate','ins_erate','del_erate','sub_erate'],index=False)
+
 if __name__ == '__main__': 
   
     basedir='/home/development/anoop/experiments/multilingual_unsup_xlit'
@@ -330,9 +408,19 @@ if __name__ == '__main__':
     ## mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
     #run_comparison_bi_multi(basedir,exp_list,'{}/analysis/bi_vs_multi/heat_maps'.format(basedir)) 
 
+
     ## command to compare bilingual and multilingual experiments 
     ## /home/development/anoop/experiments/multilingual_unsup_xlit/analysis/onehot_vs_phonetic/heat_maps/
-    run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
+    #run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
+
+    # get language independent error rates 
+    aug_exp_list='results_with_accuracy_new.csv'
+    run_gather_metrics(basedir,exp_list,aug_exp_list)
+
+    # get language independent error rates 
+    exp_list='results_with_accuracy_new.csv'
+    aug_exp_list='results_with_accuracy_new2.csv'
+    run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
