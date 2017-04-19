@@ -64,6 +64,21 @@ tf.app.flags.DEFINE_boolean('separate_output_embedding',  False,
         """Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, """
         """when input is phonetic and output is onehot_shared""")
 
+def input_chars_to_analyze():
+    """
+    Input in code: what characters to input 
+    """
+    if FLAGS.lang == 'en': 
+        chars_to_analyze=['A','E','I','O','U']
+    elif isc.is_supported_language(FLAGS.lang): 
+        offsets_to_analyze= range(0x3e, 0x4d)  ## only vowel diacritics included
+        chars_to_analyze = [ isc.offset_to_char(x,FLAGS.lang) for x in offsets_to_analyze ]
+    
+    return chars_to_analyze
+
+####  Global functions ####
+
+
 def init_representation(): 
 
     representation={}
@@ -251,22 +266,6 @@ def main(argv=None):
         return enc_outputs
 
 
-    def read_chars_to_analyze(): 
-
-        char_ids_to_analyze = [] 
-
-        if FLAGS.lang == 'en': 
-            chars_to_analyze=['A','E','I','O','U']
-        elif FLAGS.lang in [ 'pl', 'cs', 'sl', 'sk' ]:
-            chars_to_analyze=['A','E','I','O','U']  # add vowels 
-        elif isc.is_supported_language(FLAGS.lang): 
-            offsets_to_analyze= range(0x3e, 0x4d)  ## only vowel diacritics included
-            chars_to_analyze = [ isc.offset_to_char(x,FLAGS.lang) for x in offsets_to_analyze ]
-
-        char_ids_to_analyze= [ mapping[FLAGS.lang].get_index(x,FLAGS.lang) for x in chars_to_analyze ]
-
-        return ( chars_to_analyze, char_ids_to_analyze )
-
 
     ################## WORK STARTS HERE ############
 
@@ -275,7 +274,9 @@ def main(argv=None):
 
     mapping=init_mapping(representation)
 
-    chars_to_analyze, char_ids_to_analyze = read_chars_to_analyze()
+    chars_to_analyze = input_chars_to_analyze()
+
+    char_ids_to_analyze= [ mapping[FLAGS.lang].get_index(x,FLAGS.lang) for x in chars_to_analyze ]
 
     sequences, sequence_pos, sequence_lengths, sequence_masks, = prepare_data()
 
@@ -337,11 +338,12 @@ if __name__ == '__main__' :
 
     print 'Process started at: ' + time.asctime()
 
-    tf.app.run()
-
     #### Load Indic NLP Library ###
     ## Note: Environment variable: INDIC_RESOURCES_PATH must be set
     loader.load()
+
+
+    tf.app.run()
 
     print 'Process ended at: ' + time.asctime()
 
