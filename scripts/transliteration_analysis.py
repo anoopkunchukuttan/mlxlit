@@ -10,6 +10,7 @@ from cfilt.transliteration import news2015_utilities as nwutil
 
 from indicnlp.script import indic_scripts as isc 
 from indicnlp.transliterate import unicode_transliterate  as indtrans
+from indicnlp import loader 
 
 def get_column_name(x,tlang): 
     if isc.is_supported_language(tlang): 
@@ -404,7 +405,54 @@ def run_lang_ind_err_rates(basedir,exp_conf_fname,aug_exp_conf_name):
             new_cols.append(col)
     new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
 
+def run_lang_dep_err_rates(basedir,exp_conf_fname,aug_exp_conf_name): 
+    """
+     Run experiments to generate language independent error rates 
+     It generates these error rates for experiments for which analysis has already been done, 
+     and generates an new exp_conf_name with columns for the new experiments 
+    """
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+    
+    augmented_data=[]
+
+    for rec in [x[1] for x in conf_df.iterrows()]: 
+
+        slang=rec['src']
+        tlang=rec['tgt']
+        epoch=rec['epoch']
+
+        edir=get_edir(rec)
+
+        exp_dirname = '{basedir}/results/sup/{dataset}/{exp}/{rep}/{edir}'.format(
+                basedir=basedir,dataset=rec['dataset'],rep=rec['representation'],exp=rec['exp'],edir=edir)
+
+        out_dirname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}'.format(
+            exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+
+        print 'Starting Experiment: ' + exp_dirname
+        if os.path.isdir(out_dirname) and align.cci.is_supported_language(rec['tgt']): 
+            a_df=align.read_align_count_file('{}/alignment_count.csv'.format(out_dirname))
+            rec['vow_erate']=align.vowel_error_rate(a_df,tlang) 
+            rec['cons_erate']=align.consonant_error_rate(a_df,tlang) 
+        
+        augmented_data.append(rec)
+        print 'Finished Experiment: ' + exp_dirname
+        print 
+        sys.stdout.flush()
+
+    new_df=pd.DataFrame(augmented_data)
+    new_cols=[]
+    for col in ['vow_erate','cons_erate']: 
+        if col not in list(conf_df.columns): 
+            new_cols.append(col)
+    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
+
 if __name__ == '__main__': 
+
+    loader.load()
   
     basedir='/home/development/anoop/experiments/multilingual_unsup_xlit'
     exp_list='results_with_accuracy.csv'
@@ -421,14 +469,19 @@ if __name__ == '__main__':
     ## /home/development/anoop/experiments/multilingual_unsup_xlit/analysis/onehot_vs_phonetic/heat_maps/
     #run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
 
-    # get language independent error rates 
-    aug_exp_list='results_with_accuracy_new.csv'
-    run_gather_metrics(basedir,exp_list,aug_exp_list)
+    ## get transliteration metrics 
+    #aug_exp_list='results_with_accuracy_new.csv'
+    #run_gather_metrics(basedir,exp_list,aug_exp_list)
 
-    # get language independent error rates 
-    exp_list='results_with_accuracy_new.csv'
-    aug_exp_list='results_with_accuracy_new2.csv'
-    run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
+    ## get language independent error rates 
+    #exp_list='results_with_accuracy_new.csv'
+    #aug_exp_list='results_with_accuracy_new2.csv'
+    #run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
+
+    # get language dependent error rates 
+    exp_list='results_with_accuracy.csv'
+    aug_exp_list='results_with_accuracy_new.csv'
+    run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
