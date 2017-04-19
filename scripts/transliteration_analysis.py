@@ -450,6 +450,42 @@ def run_lang_dep_err_rates(basedir,exp_conf_fname,aug_exp_conf_name):
             new_cols.append(col)
     new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
 
+def run_sort_errors(basedir,exp_conf_fname): 
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+    
+    augmented_data=[]
+
+    for rec in [x[1] for x in conf_df.iterrows()]: 
+
+        slang=rec['src']
+        tlang=rec['tgt']
+        epoch=rec['epoch']
+
+        edir=get_edir(rec)
+
+        exp_dirname = '{basedir}/results/sup/{dataset}/{exp}/{rep}/{edir}'.format(
+                basedir=basedir,dataset=rec['dataset'],rep=rec['representation'],exp=rec['exp'],edir=edir)
+
+        out_dirname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}'.format(
+            exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+
+        print 'Starting Experiment: ' + exp_dirname
+        if os.path.isdir(out_dirname): 
+            a_df=align.read_align_count_file('{}/alignment_count.csv'.format(out_dirname))
+            err_df=a_df[a_df.ref_char!=a_df.out_char].copy(deep=True)
+            if isc.is_supported_language(tlang):
+                err_df['roman_ref']=err_df.apply(lambda x:(indtrans.ItransTransliterator.to_itrans(x['ref_char'],tlang)), axis=1)
+                err_df['roman_out']=err_df.apply(lambda x:(indtrans.ItransTransliterator.to_itrans(x['out_char'],tlang)), axis=1)
+                err_df['unicode_ref']=err_df.apply(lambda x:('{:2x}'.format(isc.get_offset(x['ref_char'] ,tlang) )), axis=1)
+                err_df['unicode_out']=err_df.apply(lambda x:('{:2x}'.format(isc.get_offset(x['out_char'] ,tlang) )), axis=1)
+            #err_df.sort(columns='count',ascending=False,inplace=True)
+            err_df.sort_values(by='count',axis=0,ascending=False,inplace=True)
+            err_df.to_csv('{}/err_count.csv'.format(out_dirname),encoding='utf-8')
+        print 'End Experiment: ' + exp_dirname
+    
 if __name__ == '__main__': 
 
     loader.load()
@@ -478,10 +514,13 @@ if __name__ == '__main__':
     #aug_exp_list='results_with_accuracy_new2.csv'
     #run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
 
-    # get language dependent error rates 
-    exp_list='results_with_accuracy.csv'
-    aug_exp_list='results_with_accuracy_new.csv'
-    run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
+    ## get language dependent error rates 
+    #exp_list='results_with_accuracy.csv'
+    #aug_exp_list='results_with_accuracy_new.csv'
+    #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
+
+    ## sort errors 
+    run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
