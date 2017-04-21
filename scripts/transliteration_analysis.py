@@ -560,10 +560,10 @@ if __name__ == '__main__':
     #aug_exp_list='results_with_accuracy_new2.csv'
     #run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
 
-    ## get language dependent error rates 
-    #exp_list='results_with_accuracy.csv'
-    #aug_exp_list='results_with_accuracy_new.csv'
-    #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
+    # get language dependent error rates 
+    exp_list='results_with_accuracy.csv'
+    aug_exp_list='results_with_accuracy_new.csv'
+    run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
     ### get error distribution based on vowel, consonants, others 
     #exp_list='results_with_accuracy.csv'
@@ -571,7 +571,7 @@ if __name__ == '__main__':
     #run_err_dist(basedir,exp_list,aug_exp_list)
 
     ### sort errors 
-    run_sort_errors(basedir,exp_list)
+    #run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
