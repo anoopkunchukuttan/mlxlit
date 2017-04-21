@@ -193,6 +193,29 @@ def main(argv=None):
                     new_seq_lengths.append(l)
                     new_seq_pos.append(j- start + 1)
 
+        ### add points for the vocabulary without context 
+        #for cid in char_ids_to_analyze: 
+        #    seq_slice=np.concatenate(   [ 
+        #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.GO)],
+        #                                    [cid], 
+        #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.EOW)],
+        #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.PAD)]*(FLAGS.max_seq_length-3),
+        #                                ]  )
+        #    new_seq_data.append(seq_slice)
+        #    new_seq_lengths.append(3)
+        #    new_seq_pos.append(1)
+
+        for cid in char_ids_to_analyze: 
+            seq_slice=np.concatenate(   [ 
+                                            [mapping[FLAGS.lang].get_index(Mapping.Mapping.GO)],
+                                            [cid]*3, 
+                                            [mapping[FLAGS.lang].get_index(Mapping.Mapping.EOW)],
+                                            [mapping[FLAGS.lang].get_index(Mapping.Mapping.PAD)]*(FLAGS.max_seq_length-5),
+                                        ]  )
+            new_seq_data.append(seq_slice)
+            new_seq_lengths.append(5)
+            new_seq_pos.append(2)
+
         # Creating masks. Mask has size = size of list of sequence. 
         # Corresponding to each PAD character there is a zero, for all other there is a 1
         new_seq_masks = np.zeros([ len(new_seq_data), FLAGS.max_seq_length], dtype = np.float32)  
@@ -289,13 +312,6 @@ def main(argv=None):
     char_ctx_embed_list=[]
     char_list=[]
 
-    #### for entire state 
-    #for i in range(0,sequences.shape[0]): 
-    #    for j in range(0,FLAGS.max_seq_length): 
-    #        if sequences[i,j] in char_ids_to_analyze: 
-    #            char_ctx_embed_list.append(enc_outputs[i,j,:])
-    #            char_list.append(sequences[i,j])
- 
     #### for window based approach 
     for i in range(0,sequences.shape[0]): 
         pos=sequence_pos[i]
@@ -324,15 +340,15 @@ def main(argv=None):
 
     print N
     cm = plt.get_cmap('jet') 
-    plt.scatter(x, y, c=colors_data, cmap=cm,alpha=0.5)
+    vs=len(char_ids_to_analyze)
+    plt.scatter(x[-vs:], y[-vs:], c=colors_data[-vs:], cmap=cm, alpha=1.0, marker='x')
+    plt.scatter(x[:-vs], y[:-vs], c=colors_data[:-vs], cmap=cm, alpha=0.5)
 
-    #print type(cm)
     #gen_label=lambda char: (indtrans.ItransTransliterator.to_itrans(char,FLAGS.lang) + '({:2x})'.format(isc.get_offset(char,FLAGS.lang)))
     patches=[ mpatches.Patch(label=get_label(char,FLAGS.lang), color=cm(color)) for char, color in zip(chars_to_analyze, cols_list) ]
     plt.legend(handles=patches,ncol=3,fontsize='xx-small')
     
     plt.savefig(FLAGS.out_fname)
-    #plt.show()
 
 if __name__ == '__main__' :
 

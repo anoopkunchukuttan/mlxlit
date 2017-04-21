@@ -525,7 +525,9 @@ def run_sort_errors(basedir,exp_conf_fname):
                 err_df['roman_out']=err_df.apply(lambda x:(indtrans.ItransTransliterator.to_itrans(x['out_char'],tlang)), axis=1)
                 err_df['unicode_ref']=err_df.apply(lambda x:('{:2x}'.format(isc.get_offset(x['ref_char'] ,tlang) )), axis=1)
                 err_df['unicode_out']=err_df.apply(lambda x:('{:2x}'.format(isc.get_offset(x['out_char'] ,tlang) )), axis=1)
-            #err_df.sort(columns='count',ascending=False,inplace=True)
+            err_df['charcat_ref']=err_df.apply(lambda x: align.cci.get_char_type(x['ref_char'],tlang) , axis=1)
+            err_df['charcat_out']=err_df.apply(lambda x: align.cci.get_char_type(x['out_char'],tlang) , axis=1)
+
             err_df.sort_values(by='count',axis=0,ascending=False,inplace=True)
             err_df.to_csv('{}/err_count.csv'.format(out_dirname),encoding='utf-8')
         print 'End Experiment: ' + exp_dirname
@@ -563,13 +565,13 @@ if __name__ == '__main__':
     #aug_exp_list='results_with_accuracy_new.csv'
     #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
-    ## get error distribution based on vowel, consonants, others 
-    exp_list='results_with_accuracy.csv'
-    aug_exp_list='results_with_accuracy_new.csv'
-    run_err_dist(basedir,exp_list,aug_exp_list)
+    ### get error distribution based on vowel, consonants, others 
+    #exp_list='results_with_accuracy.csv'
+    #aug_exp_list='results_with_accuracy_new.csv'
+    #run_err_dist(basedir,exp_list,aug_exp_list)
 
     ### sort errors 
-    #run_sort_errors(basedir,exp_list)
+    run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
