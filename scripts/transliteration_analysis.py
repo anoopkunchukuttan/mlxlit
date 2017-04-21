@@ -450,6 +450,50 @@ def run_lang_dep_err_rates(basedir,exp_conf_fname,aug_exp_conf_name):
             new_cols.append(col)
     new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
 
+def run_err_dist(basedir,exp_conf_fname,aug_exp_conf_name): 
+    """
+     Run experiments to generate language independent error rates 
+     It generates these error rates for experiments for which analysis has already been done, 
+     and generates an new exp_conf_name with columns for the new experiments 
+    """
+
+    ## read the list of experiments to be analyzed 
+    print 'Read list of experiments' 
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+    
+    augmented_data=[]
+
+    for rec in [x[1] for x in conf_df.iterrows()]: 
+
+        slang=rec['src']
+        tlang=rec['tgt']
+        epoch=rec['epoch']
+
+        edir=get_edir(rec)
+
+        exp_dirname = '{basedir}/results/sup/{dataset}/{exp}/{rep}/{edir}'.format(
+                basedir=basedir,dataset=rec['dataset'],rep=rec['representation'],exp=rec['exp'],edir=edir)
+
+        out_dirname='{exp_dirname}/outputs/{epoch:03d}_analysis_{slang}-{tlang}'.format(
+            exp_dirname=exp_dirname,epoch=epoch,slang=slang,tlang=tlang)
+
+        print 'Starting Experiment: ' + exp_dirname
+        if os.path.isdir(out_dirname) and align.cci.is_supported_language(rec['tgt']): 
+            a_df=align.read_align_count_file('{}/alignment_count.csv'.format(out_dirname))
+            rec['vow_frac'],rec['cons_frac'],rec['oth_frac']=align.err_dist(a_df,tlang) 
+        
+        augmented_data.append(rec)
+        print 'Finished Experiment: ' + exp_dirname
+        print 
+        sys.stdout.flush()
+
+    new_df=pd.DataFrame(augmented_data)
+    new_cols=[]
+    for col in ['vow_frac','cons_frac','oth_frac']: 
+        if col not in list(conf_df.columns): 
+            new_cols.append(col)
+    new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
+
 def run_sort_errors(basedir,exp_conf_fname): 
 
     ## read the list of experiments to be analyzed 
@@ -519,8 +563,13 @@ if __name__ == '__main__':
     #aug_exp_list='results_with_accuracy_new.csv'
     #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
-    ## sort errors 
-    run_sort_errors(basedir,exp_list)
+    ## get error distribution based on vowel, consonants, others 
+    exp_list='results_with_accuracy.csv'
+    aug_exp_list='results_with_accuracy_new.csv'
+    run_err_dist(basedir,exp_list,aug_exp_list)
+
+    ### sort errors 
+    #run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
