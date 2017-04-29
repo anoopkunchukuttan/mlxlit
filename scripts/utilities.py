@@ -4,6 +4,7 @@ import sys,os
 from collections import defaultdict
 
 import numpy as np
+import pandas as pd
 from scipy.misc.common import logsumexp
 import itertools as it
 import random
@@ -207,6 +208,21 @@ def transfer_pivot_translate(output_s_b_fname,output_b_t_fname,output_final_fnam
             for c,score in candidate_list[:n]:
                 output_final_file.write( u'{} ||| {} ||| {} ||| {}\n'.format( sent_no, c, '0.0 0.0 0.0 0.0', score  ) )
 
+def read_best_epoch(exp_conf_fname,dataset,exp,representation,src,tgt): 
+
+    conf_df=pd.read_csv(exp_conf_fname,header=0,sep=',')
+    query_str='dataset=="{}" & exp=="{}" & representation=="{}" & src=="{}" and tgt=="{}"'.format(
+                dataset,exp,representation,src,tgt)
+    resp_df=conf_df.query(query_str)
+    if resp_df.shape[0]==0:
+        print 'Invalid Experiment' 
+        sys.exit(1)
+    elif resp_df.shape[0]>1:
+        print 'More than one result. Please be more specific in the query' 
+        sys.exit(1)
+    elif resp_df.shape[0]==1:
+        print resp_df.iterrows().next()[1]['epoch']
+
 if __name__=='__main__': 
 
     commands = {
@@ -214,6 +230,7 @@ if __name__=='__main__':
             'transfer_pivot_translate': transfer_pivot_translate,
             'compute_accuracy': compute_accuracy,
             'compute_accuracy_multilingual': compute_accuracy_multilingual,
+            'read_best_epoch': read_best_epoch,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
