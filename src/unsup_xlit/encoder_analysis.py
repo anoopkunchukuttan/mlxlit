@@ -5,6 +5,7 @@ import codecs
 import itertools as it
 import pickle 
 import numpy as np
+import mpld3
 import calendar,time
 from collections import defaultdict
 
@@ -194,6 +195,7 @@ def main(argv=None):
                     new_seq_pos.append(j- start + 1)
 
         ### add points for the vocabulary without context 
+        ## single character 
         #for cid in char_ids_to_analyze: 
         #    seq_slice=np.concatenate(   [ 
         #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.GO)],
@@ -205,16 +207,17 @@ def main(argv=None):
         #    new_seq_lengths.append(3)
         #    new_seq_pos.append(1)
 
-        for cid in char_ids_to_analyze: 
-            seq_slice=np.concatenate(   [ 
-                                            [mapping[FLAGS.lang].get_index(Mapping.Mapping.GO)],
-                                            [cid]*3, 
-                                            [mapping[FLAGS.lang].get_index(Mapping.Mapping.EOW)],
-                                            [mapping[FLAGS.lang].get_index(Mapping.Mapping.PAD)]*(FLAGS.max_seq_length-5),
-                                        ]  )
-            new_seq_data.append(seq_slice)
-            new_seq_lengths.append(5)
-            new_seq_pos.append(2)
+        #for cid in char_ids_to_analyze: 
+        ## character thrice
+        #    seq_slice=np.concatenate(   [ 
+        #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.GO)],
+        #                                    [cid]*3, 
+        #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.EOW)],
+        #                                    [mapping[FLAGS.lang].get_index(Mapping.Mapping.PAD)]*(FLAGS.max_seq_length-5),
+        #                                ]  )
+        #    new_seq_data.append(seq_slice)
+        #    new_seq_lengths.append(5)
+        #    new_seq_pos.append(2)
 
         # Creating masks. Mask has size = size of list of sequence. 
         # Corresponding to each PAD character there is a zero, for all other there is a 1
@@ -288,8 +291,6 @@ def main(argv=None):
 
         return enc_outputs
 
-
-
     ################## WORK STARTS HERE ############
 
     ##### Obtaining Encoder Embeddings 
@@ -336,19 +337,30 @@ def main(argv=None):
 
     colors_data = [ char_col_map[c] for c in char_list ]        
 
-    #area = np.pi * (15 * np.random.rand(N))**2  # 0 to 15 point radii
-
     print N
     cm = plt.get_cmap('jet') 
     vs=len(char_ids_to_analyze)
-    plt.scatter(x[-vs:], y[-vs:], c=colors_data[-vs:], cmap=cm, alpha=1.0, marker='x')
-    plt.scatter(x[:-vs], y[:-vs], c=colors_data[:-vs], cmap=cm, alpha=0.5)
 
-    #gen_label=lambda char: (indtrans.ItransTransliterator.to_itrans(char,FLAGS.lang) + '({:2x})'.format(isc.get_offset(char,FLAGS.lang)))
+    fig,ax=plt.subplots()
+    scatter=ax.scatter(x, y, c=colors_data, cmap=cm, alpha=0.5)
+    #plt.scatter(x[-vs:], y[-vs:], c=colors_data[-vs:], cmap=cm, alpha=1.0, marker='x')
+
+    gen_label=lambda char: (indtrans.ItransTransliterator.to_itrans(char,FLAGS.lang) + '({:2x})'.format(isc.get_offset(char,FLAGS.lang)))
     patches=[ mpatches.Patch(label=get_label(char,FLAGS.lang), color=cm(color)) for char, color in zip(chars_to_analyze, cols_list) ]
-    plt.legend(handles=patches,ncol=3,fontsize='xx-small')
+    ax.legend(handles=patches,ncol=3,fontsize='xx-small')
+
+    labels=[]
+    for i in range(0,sequences.shape[0]): 
+        labels.append(u''.join([ mapping[FLAGS.lang].get_char(sequences[i,j],FLAGS.lang)  for j in range(1,sequence_lengths[i]-1) ]))
+
+    #tooltip = mpld3.plugins.PointLabelTooltip(scatter, labels=labels)
+    #mpld3.plugins.connect(fig, tooltip)
     
+    #mpld3.save_html(fig,FLAGS.out_fname)
+    ##mpld3.show(ip='10.129.2.170',port=10002, open_browser=False)
+
     plt.savefig(FLAGS.out_fname)
+    ##plt.show()
 
 if __name__ == '__main__' :
 
@@ -357,7 +369,6 @@ if __name__ == '__main__' :
     #### Load Indic NLP Library ###
     ## Note: Environment variable: INDIC_RESOURCES_PATH must be set
     loader.load()
-
 
     tf.app.run()
 
