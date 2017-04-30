@@ -24,7 +24,7 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
         prefix_tgtlang,prefix_srclang,mapping,
         max_sequence_length, beam_size_val,topn_val): 
     """
-    Function to decode data 
+    convenience function to decode data 
     
     out_dir: output directory to store decoded files for each language
     epoch_no: epoch number for which decoding is being done 
@@ -34,6 +34,9 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
 
     decode_output_op: dictionary of decoder output operation for every language pair 
     decode_scores_op: dictionary of decoder output scores operation for every language pair 
+
+    batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+        beam_size, topn: placeholder variables 
 
     prefix_srclang: see commandline flags 
     prefix_tgtlang: see commandline flags 
@@ -109,11 +112,16 @@ def get_seq2seq_loss(lang_pairs, parallel_data,
                         prefix_tgtlang, prefix_srclang, 
                         mapping, max_sequence_length):
     """
-    Function to compute the translation loss (cross entropy) 
+    convenience function to compute the translation loss (cross entropy) 
 
     lang_pairs: list of language pair tuples. 
     parallel_data: Dictionary of ParallelDataReader object for various language pairs                 
+
     seq_loss_op: dictionary of sequence loss operation for every language pair 
+    batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+        batch_sequences_2, batch_sequence_masks_2, batch_sequence_lengths_2,
+        dropout_keep_prob: placeholder variables 
+
     prefix_srclang: see commandline flags 
     prefix_tgtlang: see commandline flags 
     mapping: Dictionary of mapping objects for each language
@@ -326,7 +334,7 @@ if __name__ == '__main__' :
 
     ## add language code to vocabulary
     for lang in all_langs: 
-        if prefix_srclang or prefix_tgtlang: 
+        if prefix_srclang or prefix_tgtlang or os.getenv('ALWAYS_LANG_TOKEN') is not None: 
             mapping[lang].get_index(Mapping.create_special_token(lang),lang)
 
     # Reading Parallel Training data
@@ -480,7 +488,8 @@ if __name__ == '__main__' :
             lang1 = opti_lang[0]
             lang2 = opti_lang[1]
 
-            sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = parallel_train_data[opti_lang].get_next_batch(batch_size)
+            sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = \
+                    parallel_train_data[opti_lang].get_next_batch(batch_size)
             
             if prefix_tgtlang: 
                 sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(sequences,sequence_masks,sequence_lengths, 
@@ -542,7 +551,11 @@ if __name__ == '__main__' :
                 cont = False
 
             ### Decode the test set
-            test_start_time=time.time()
+
+            test_start_time=0.0
+            test_end_time=0.0
+            validdecode_start_time=0.0
+            validdecode_end_time=0.0
 
             if(cont == False or (infer_every > 0 and completed_epochs%infer_every == 0)):
 
@@ -550,24 +563,28 @@ if __name__ == '__main__' :
 
                 if completed_epochs % infer_every == 0:
 
+                    test_start_time=time.time()
                     test_loss=decode(outputs_dir, completed_epochs, test_langs, test_data,
                             infer_output, infer_output_scores,
                             batch_sequences, batch_sequence_masks, batch_sequence_lengths,
                             beam_size, topn,
                             prefix_tgtlang, prefix_srclang, mapping,
                             max_sequence_length, beam_size_val, topn_val) 
+                    test_end_time=time.time()
 
+                    validdecode_start_time=time.time()
                     valid_decode_loss=decode(valid_outputs_dir, completed_epochs, parallel_valid_langs, valid_decode_data,
                             infer_output, infer_output_scores,
                             batch_sequences, batch_sequence_masks, batch_sequence_lengths,
                             beam_size, topn,
                             prefix_tgtlang, prefix_srclang, mapping,
                             max_sequence_length, beam_size_val, topn_val) 
+                    validdecode_end_time=time.time()
 
                     print "Epochs Completed : "+str(completed_epochs).zfill(3)+"\t Test loss: "+str(test_loss)
 
-            test_end_time=time.time()
             epoch_test_time=(test_end_time-test_start_time)
+            epoch_validdecode_time=(validdecode_end_time-validdecode_start_time)
 
             # Save current model
             #if(cont == True):
@@ -575,10 +592,11 @@ if __name__ == '__main__' :
             saver.save(sess, temp_model_output_dir+'my_model', global_step=completed_epochs)
 
             print "Epochs Completed : "+str(completed_epochs).zfill(3)+ \
-                    "\t Time (hh:mm:ss)::: train> {} valid> {} test> {}".format(
+                    "\t Time (hh:mm:ss)::: train> {} valid> {} test> {} validdecode> {}".format(
                             utilities.formatted_timeinterval(epoch_train_time), 
                             utilities.formatted_timeinterval(epoch_valid_time), 
-                            utilities.formatted_timeinterval(epoch_test_time)
+                            utilities.formatted_timeinterval(epoch_test_time),
+                            utilities.formatted_timeinterval(epoch_validdecode_time),
                             )
 
             ## update epoch variables 
@@ -607,94 +625,3 @@ if __name__ == '__main__' :
 
     print 'Process terminated at: ' + time.asctime()
 
-#def get_translation_loss(parallel_valid_langs,parallel_valid_data,
-#                        prefix_tgtlang,prefix_srclang,mapping,
-#                        validation_seq_loss): 
-#
-#    validation_loss = 0.0
-#    for lang_pair in parallel_valid_langs:
-#    
-#        lang1=lang_pair[0]
-#        lang2=lang_pair[1]
-#    
-#        sequences,sequence_masks,sequence_lengths,sequences_2,sequence_masks_2,sequence_lengths_2 = \
-#                    parallel_valid_data[lang_pair].get_data()
-#    
-#        if prefix_tgtlang: 
-#            sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
-#                                        sequences,sequence_masks,sequence_lengths,
-#                                        lang2,mapping[lang2])
-#        if prefix_srclang: 
-#            sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
-#                                        sequences,sequence_masks,sequence_lengths,
-#                                        lang1,mapping[lang1])
-#    
-#        validation_loss += sess.run(validation_seq_loss[lang_pair], feed_dict = {
-#            batch_sequences:sequences,batch_sequence_masks:sequence_masks,batch_sequence_lengths:sequence_lengths,
-#            batch_sequences_2:sequences_2,batch_sequence_masks_2:sequence_masks_2,batch_sequence_lengths_2:sequence_lengths_2,
-#            dropout_keep_prob:1.0
-#            })
-#
-#    return validation_loss        
-
-#def decode(out_folder,test_langs,test_data,prefix_tgtlang,prefix_srclang,mapping,
-#        infer_output,infer_output_scores,
-#        beam_size_val,topn_val): 
-#    # If this was the last epoch, output result to final output folder, otherwise to outputs folder
-#    
-#    test_loss=0.0
-#    for lang_pair in test_langs:
-#        source_lang = lang_pair[0]
-#        target_lang = lang_pair[1]
-#        sequences,sequence_masks, sequence_lengths = test_data[lang_pair].get_data()
-#    
-#        if prefix_tgtlang: 
-#            sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
-#                                        sequences,sequence_masks,sequence_lengths,
-#                                        target_lang,mapping[target_lang])
-#    
-#        if prefix_srclang: 
-#            sequences,sequence_masks,sequence_lengths = Mapping.prefix_sequence_with_token(
-#                                        sequences,sequence_masks,sequence_lengths,
-#                                        source_lang,mapping[source_lang])
-#    
-#        #predicted_sequences_ids, predicted_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
-#    
-#        predicted_sequences_ids_list=[]
-#        predicted_scores_list=[]
-#        for start in xrange(0,sequences.shape[0],batch_size):
-#            end = min(start+batch_size,sequences.shape[0])
-#    
-#            batch_start_time=time.time()
-#    
-#            data_sequences=sequences[start:end,:]
-#            data_sequence_masks=sequence_masks[start:end,:]
-#            data_sequence_lengths=sequence_lengths[start:end]
-#    
-#            b_sequences_ids, b_scores = sess.run([infer_output[lang_pair],infer_output_scores[lang_pair]], 
-#                feed_dict={batch_sequences: data_sequences, batch_sequence_lengths: data_sequence_lengths, 
-#                            beam_size: beam_size_val, topn: topn_val
-#                           }
-#                )
-#    
-#            predicted_sequences_ids_list.append(b_sequences_ids)
-#            predicted_scores_list.append(b_scores)
-#    
-#        predicted_sequences_ids=np.concatenate(predicted_sequences_ids_list,axis=0)
-#        predicted_scores=np.concatenate(predicted_scores_list,axis=0)
-#    
-#        ## write output to file 
-#        out_fname=out_folder+str(completed_epochs).zfill(3)+'test.nbest.'+source_lang+'-'+target_lang+'.'+target_lang
-#        with codecs.open(out_fname,'w','utf-8') as outfile: 
-#            for sent_no, all_sent_predictions in enumerate(predicted_sequences_ids): 
-#                for rank, predicted_sequence_ids in enumerate(all_sent_predictions): 
-#                    sent=[mapping[target_lang].get_char(x,target_lang) for x in predicted_sequence_ids]
-#                    sent=u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',sent))) 
-#                    outfile.write(u'{} ||| {} ||| Distortion0= -1 LM0= -1 WordPenalty0= -1 PhrasePenalty0= -1 TranslationModel0= -1 -1 -1 -1 ||| {}\n'.format(sent_no,sent,predicted_scores[sent_no,rank]))
-#    
-#        ### compute loss: just the negative of the likelihood of best candidates
-#        best_scores=predicted_scores[:,0]
-#        test_loss+= (-np.sum(best_scores))
-#
-#        return test_loss 
-#    

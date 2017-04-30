@@ -1,3 +1,5 @@
+import os 
+
 import Mapping
 import encoders
 
@@ -159,16 +161,30 @@ class AttentionModel():
 
         ### shared output params
             #  a hackish way of getting one of the shared languages Be careful - this may break - only experimental use!
-        shared_outvocab_size = self.vocab_size[filter(lambda l:l not in ['en','ar','zh'] , self.lang_list)[0]]
-        out_W_shared = tf.Variable(tf.random_uniform([self.dec_rnn_size,shared_outvocab_size], -1*max_val, max_val), 
-                                    name='out_W_shared')
-        out_b_shared = tf.Variable(tf.constant(0., shape = [shared_outvocab_size]), name='out_b_shared')
+        #shared_outvocab_size = self.vocab_size[filter(lambda l:l not in ['en','ar','zh'] , self.lang_list)[0]]
+        #out_W_shared = tf.Variable(tf.random_uniform([self.dec_rnn_size,shared_outvocab_size], -1*max_val, max_val), 
+        #                            name='out_W_shared')
+        #out_b_shared = tf.Variable(tf.constant(0., shape = [shared_outvocab_size]), name='out_b_shared')
+        shared_outvocab_size=None
+        out_W_shared=None
+        out_b_shared=None
+
+        if os.getenv('NO_OUTEMBED') is None:
+            #  a hackish way of getting one of the shared languages Be careful - this may break - only experimental use!
+            shared_outvocab_size = self.vocab_size[filter(lambda l:l not in ['en','ar','zh'] , self.lang_list)[0]]
+            out_W_shared = tf.Variable(tf.random_uniform([self.dec_rnn_size,shared_outvocab_size], -1*max_val, max_val), 
+                                        name='out_W_shared')
+            out_b_shared = tf.Variable(tf.constant(0., shape = [shared_outvocab_size]), name='out_b_shared')
 
         for lang in self.lang_list:
             if self.use_shared_output: 
-                self.out_W[lang]=out_W_shared
-                self.out_b[lang]=out_b_shared
-                pass 
+                #self.out_W[lang]=out_W_shared
+                #self.out_b[lang]=out_b_shared
+                #pass 
+                if os.getenv('NO_OUTEMBED') is None:
+                    self.out_W[lang]=out_W_shared
+                    self.out_b[lang]=out_b_shared
+                    pass 
             else: 
                 self.out_W[lang] = tf.Variable(tf.random_uniform([self.dec_rnn_size,self.vocab_size[lang]], -1*max_val, max_val),
                                                 name='out_W_{}'.format(lang))

@@ -17,6 +17,10 @@ export CUDA_VISIBLE_DEVICES=1
 #
 #restore_epoch_number="40"
 #
+### Backward compatibility flags
+##export NO_OUTEMBED=1
+##export ALWAYS_LANG_TOKEN=1
+#
 #for expname in `echo 2_multilingual`
 #do 
 #
@@ -159,13 +163,17 @@ export CUDA_VISIBLE_DEVICES=1
 ######################### supervised transliteration - bilingual  ############################
 ###############################################################################################
 
-#dataset='news_2015_official'
+#dataset='news_2015_indic'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
 ##restore_epoch_number="20"
 #
-#for expname in `echo 2_bilingual_bilstm`
+### Backward compatibility flags
+##export NO_OUTEMBED=1
+##export ALWAYS_LANG_TOKEN=1
+#
+#for expname in `echo 100_test`
 #do 
 #
 #    ######## Experiment loop starts here ########
@@ -176,13 +184,7 @@ export CUDA_VISIBLE_DEVICES=1
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
 #    #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
 #    #for langpair in `echo ar-cs ar-pl ar-sk ar-sl`
-#    #for langpair in `echo bn-hi bn-kn`
-#    #for langpair in `echo hi-bn hi-ta`
-#    #for langpair in `echo kn-bn kn-ta`
-#    #for langpair in `echo ta-hi ta-kn`
-#    #for langpair in `echo bn-ta ta-bn`
-#    #for langpair in `echo hi-kn kn-hi`
-#    for langpair in `echo en-kn`
+#    for langpair in `echo bn-hi`
 #    do
 #        src_lang=`echo $langpair | cut -f 1 -d '-'`
 #        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
@@ -197,7 +199,7 @@ export CUDA_VISIBLE_DEVICES=1
 #            if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
 #            then 
 #                rep_str="en:onehot,$tgt_lang:$representation"
-#            elif [ $dataset = 'news_2014_reversed' ]
+#            elif [ $dataset = 'news_2015_reversed' ]
 #            then 
 #                rep_str="en:onehot,$src_lang:$representation"
 #            elif [ $dataset = 'news_2015_indic' ]
@@ -229,7 +231,6 @@ export CUDA_VISIBLE_DEVICES=1
 #                --data_dir   "$data_dir/$langpair" \
 #                --output_dir "$o" \
 #                --representation "$rep_str" \
-#                --enc_type "bilstm" \
 #                --max_epochs 40 \
 #                $more_opts \
 #                >> $o/train.log 2>&1 
@@ -247,14 +248,14 @@ export CUDA_VISIBLE_DEVICES=1
 ###################### EVALUATE SPECIFIC ITERATION #################
 ##############################################################################################
 
-#dataset='news_2015_official'
+#dataset='news_2015_indic'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
 #for prefix in `seq -f '%03g' 1 40`
 #do 
 #
-#for expname in `echo 2_bilingual_bilstm`
+#for expname in `echo 100_test`
 #do 
 #
 #    ######## Experiment loop starts here ########
@@ -264,7 +265,7 @@ export CUDA_VISIBLE_DEVICES=1
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
 #    #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
-#    for langpair in `echo en-hi en-kn`
+#    for langpair in `echo bn-hi`
 #    do
 #        src_lang=`echo $langpair | cut -f 1 -d '-'`
 #        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
@@ -282,6 +283,8 @@ export CUDA_VISIBLE_DEVICES=1
 #            echo 'Start: ' $dataset $expname $langpair $representation $prefix 
 #    
 #            #### Evaluation starts 
+#
+#            ####### ON TEST SET 
 #            
 #            resdir=outputs
 #    
@@ -300,6 +303,23 @@ export CUDA_VISIBLE_DEVICES=1
 #                    -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
 #                     > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
 #    
+#            ####### ON VALIDATION SET 
+#            resdir=validation
+#            # generate NEWS 2015 evaluation format output file 
+#            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+#                    "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.id" \
+#                    "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
+#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
+#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+#                    "system" "conll2016" "$src_lang" "$tgt_lang"  
+#            
+#            # run evaluation 
+#            python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+#                    -t "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
+#                    -i "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+#                    -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
+#                     > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
+#
 #            echo 'End: ' $dataset $expname $langpair $representation $prefix
 #    
 #        done 
@@ -307,87 +327,58 @@ export CUDA_VISIBLE_DEVICES=1
 #done 
 #done
 
+
+####################################################################
+#####################  FIND MININUM ITERATIONS AND SCORES ##########
+####################################################################
+#
 #dataset='news_2015_indic'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
-#while read e_r_l_p_v
+#for expname in `echo 100_test`
 #do 
-#        expname=`echo "$e_r_l_p_v" | cut -f 1 -d '|'`
-#        representation=`echo "$e_r_l_p_v" | cut -f 2 -d '|'`
-#        langpair=`echo "$e_r_l_p_v" | cut -f 3 -d '|'`
-#        prefix=`echo "$e_r_l_p_v" | cut -f 4 -d '|'`
-#        loss=`echo "$e_r_l_p_v" | cut -f 5 -d '|'`
 #
-#        src_lang=`echo $langpair | cut -f 1 -d '-'`
-#        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#    for representation in `echo onehot`
+#    do 
+#        ###### bilingual 
+#        #for langpair in `echo en-hi en-bn en-ta en-kn`
+#        #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
+#        #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
+#        #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
+#        for langpair in `echo bn-hi`
+#        do
+#            src_lang=`echo $langpair | cut -f 1 -d '-'`
+#            tgt_lang=`echo $langpair | cut -f 2 -d '-'`
 #
-#        echo $e_r_l_p_v
-#        echo 
+#            scores=`python utilities.py compute_accuracy \
+#                $output_dir/$expname/$representation/$langpair \
+#                $src_lang $tgt_lang \
+#                40` 
+#            echo "$dataset|$expname|$representation|$src_lang|$tgt_lang|$scores" 
 #
-#        #### output directory to select 
-#        #### for bilingual experiments 
-#        #o=$output_dir/$expname/$representation/$langpair
+#        done         
 #
-#        ##### other multilingual experiments  
-#        #o=$output_dir/$expname/$representation/multi-conf
+#       # ######### multilingual by averaging 
+#       # echo "$dataset|$expname|$representation" 
+#       # python utilities.py compute_accuracy_multilingual \
+#       #         $output_dir/$expname/$representation/multi-conf \
+#       #         40 
 #
-#        echo 'Start: ' $dataset $expname $langpair $representation 
-#    
-#        #### Evaluation starts 
-#        
-#        resdir=outputs
-#    
-#        # generate NEWS 2015 evaluation format output file 
-#        python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-#                "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.id" \
-#                "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
-#                "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
-#                "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                "system" "conll2016" "$src_lang" "$tgt_lang"  
-#        
-#        # run evaluation 
-#        python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-#                -t "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
-#                -i "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
-#                 > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
-#    
-#        echo 'End: ' $dataset $expname $langpair $representation 
-#done  <<CONFIG
-#2_multilingual|onehot_shared|kn-hi|026|5.28773880005
-#2_multilingual|onehot_shared|hi-kn|026|5.28773880005
-#2_multilingual|onehot_shared|bn-ta|026|5.28773880005
-#2_multilingual|onehot_shared|ta-bn|026|5.28773880005
-#CONFIG
-
-#2_multilingual_zeroshot|onehot_shared|kn-hi|013|4.71042811871
-#2_multilingual_zeroshot|onehot_shared|hi-kn|013|4.71042811871
-#2_multilingual_zeroshot|onehot_shared|bn-ta|013|4.71042811871
-#2_multilingual_zeroshot|onehot_shared|ta-bn|013|4.71042811871
-
-#2_multilingual_prefix_src|onehot_shared|hi-en|006|0.458529800177
-#2_multilingual_prefix_src|onehot_shared|kn-en|006|0.458529800177
-#2_multilingual_prefix_src|onehot_shared|bn-en|006|0.458529800177
-#2_multilingual_prefix_src|onehot_shared|ta-en|006|0.458529800177
-
-#2_multilingual|onehot_shared|bn-hi|010|4.71042811871
-#2_multilingual|onehot_shared|bn-kn|010|4.71042811871
-#2_multilingual|onehot_shared|hi-bn|010|4.71042811871
-#2_multilingual|onehot_shared|hi-ta|010|4.71042811871
-#2_multilingual|onehot_shared|kn-bn|010|4.71042811871
-#2_multilingual|onehot_shared|kn-ta|010|4.71042811871
-#2_multilingual|onehot_shared|ta-hi|010|4.71042811871
-#2_multilingual|onehot_shared|ta-kn|010|4.71042811871
+#    done         
+#done     
 
 ########################################################################
 ################# Decoding #########################
 ########################################################################
 
 ######## for multilingual zeroshot training  (en-indic) with hindi as the missing language
-#dataset='news_2015_indic'
+#dataset='news_2015_reversed'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+#
+### Backward compatibility flags
+##export NO_OUTEMBED=1
 #
 #while read e_r_l_p_v
 #do 
@@ -408,10 +399,10 @@ export CUDA_VISIBLE_DEVICES=1
 #        #### output directory to select 
 #        
 #        ## bilingual
-#        o=$output_dir/$expname/$representation/$langpair
+#        #o=$output_dir/$expname/$representation/$langpair
 #
 #        ## multilingual 
-#        #o=$output_dir/$expname/$representation/multi-conf
+#        o=$output_dir/$expname/$representation/multi-conf
 #
 #        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
 #        then 
@@ -461,10 +452,6 @@ export CUDA_VISIBLE_DEVICES=1
 #        echo 'End: ' $dataset $expname $langpair $representation 
 #
 #done  <<CONFIG
-#2_multilingual|onehot_shared|kn-hi|026|5.28773880005
-#2_multilingual|onehot_shared|hi-kn|026|5.28773880005
-#2_multilingual|onehot_shared|bn-ta|026|5.28773880005
-#2_multilingual|onehot_shared|ta-bn|026|5.28773880005
 #CONFIG
 
 
@@ -473,113 +460,6 @@ export CUDA_VISIBLE_DEVICES=1
 #2_multilingual|phonetic|bn-ta|013|5.28773880005
 #2_multilingual|phonetic|ta-bn|013|5.28773880005
 
-##############################################################################################################################
-## Finding the model with the best validation accuracy ########
-##############################################################################################################################
-
-#dataset='news_2015_official'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-#expname="2_bilingual_bilstm"
-#representation="onehot"
-#
-##for langpair in `echo en-hi en-bn en-kn en-ta`
-##for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
-##for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
-##for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
-#for langpair in `echo en-kn`
-#do 
-#
-#    src_lang=`echo $langpair | cut -f 1 -d '-'`
-#    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-#    
-#    o=$output_dir/$expname/$representation/$langpair   #### Set this correctly for bilingual vs multilingual
-#    rep_str="en:onehot,$tgt_lang:$representation"     #### which dataset
-#    #rep_str="$representation"     #### which dataset
-#    
-#    #### for every saved model, compute accuracy on the validation set 
-#    ##### Note: Validation xml needs to be created 
-#    
-#    echo 'Start: ' $dataset $expname $langpair $representation 
-#    
-#    mkdir -p "$o/validation"
-#    
-#    for prefix in `seq -f '%03g' 1 40`
-#    do 
-#        
-#        prefix1=`echo $prefix | sed 's,^0\+,,g'`
-#        echo $prefix  $prefix1     
-#        
-#        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-#            --lang_pair $langpair \
-#            --beam_size 5 \
-#            --mapping_dir "$o/mappings" \
-#            --model_fname "$o/temp_models/my_model-$prefix1"  \
-#            --enc_type bilstm \
-#            --representation $rep_str \
-#            --in_fname    "$data_dir/$langpair/parallel_valid/$langpair.$src_lang" \
-#            --out_fname   "$o/validation/${prefix}test.nbest.$langpair.$tgt_lang"
-#        
-#        # generate NEWS 2015 evaluation format output file 
-#        python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-#                "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.id" \
-#                "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
-#                "$o/validation/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
-#                "$o/validation/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                "system" "conll2016" "$src_lang" "$tgt_lang"  
-#        
-#        # run evaluation 
-#        python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-#                -t "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
-#                -i "$o/validation/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                -o "$o/validation/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
-#                 > "$o/validation/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
-#    
-#    done 
-#    
-#    echo 'End: ' $dataset $expname $langpair $representation 
-#
-#done 
-#
-
-###################  find mininum iterations - temporary ##########
-#
-#dataset='news_2015_official'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-#for expname in `echo 2_bilingual_bilstm`
-#do 
-#
-#    for representation in `echo onehot`
-#    do 
-#        ###### bilingual 
-#        #for langpair in `echo en-hi en-bn en-ta en-kn`
-#        #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
-#        #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
-#        #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
-#        for langpair in `echo en-hi en-kn`
-#        do
-#            src_lang=`echo $langpair | cut -f 1 -d '-'`
-#            tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-#
-#            scores=`python utilities.py compute_accuracy \
-#                $output_dir/$expname/$representation/$langpair \
-#                $src_lang $tgt_lang \
-#                40` 
-#            echo "$dataset|$expname|$representation|$src_lang|$tgt_lang|$scores" 
-#
-#        done         
-#
-#       # ######### multilingual by averaging 
-#       # echo "$dataset|$expname|$representation" 
-#       # python utilities.py compute_accuracy_multilingual \
-#       #         $output_dir/$expname/$representation/multi-conf \
-#       #         40 
-#
-#    done         
-#done     
 
 
 #############################################################################################
@@ -663,16 +543,28 @@ export CUDA_VISIBLE_DEVICES=1
 #        echo 'End: ' $dataset $expname $langpair $representation 
 #
 #done  <<CONFIG
+#CONFIG
+
 #2_bilingual|onehot|en-hi|026|0.641
 #2_bilingual|onehot|en-bn|021|0.417
 #2_bilingual|onehot|en-ta|038|0.578
 #2_bilingual|onehot|en-kn|025|0.52
-#CONFIG
 
 #2_multilingual|onehot_shared|en-hi|023|0.607
 #2_multilingual|onehot_shared|en-bn|022|0.461
 #2_multilingual|onehot_shared|en-ta|026|0.553
 #2_multilingual|onehot_shared|en-kn|040|0.539
+
+#2_bilingual|onehot|hi-en|022|0.382591
+#2_bilingual|onehot|bn-en|032|0.48934
+#2_bilingual|onehot|ta-en|023|0.232232
+#2_bilingual|onehot|kn-en|036|0.337675
+
+
+#2_multilingual|onehot_shared|hi-en|037|0.511134
+#2_multilingual|onehot_shared|bn-en|022|0.540102
+#2_multilingual|onehot_shared|ta-en|031|0.259259
+#2_multilingual|onehot_shared|kn-en|022|0.476954
 
 
 
