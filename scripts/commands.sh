@@ -657,7 +657,8 @@ export CUDA_VISIBLE_DEVICES=1
 #                --mapping_dir "$o/mappings" \
 #                --window_size 1 \
 #                --in_fname $data_dir/$langpair/test.$src_lang \
-#                --out_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.png
+#                --out_img_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.png \
+#                --out_html_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.html
 #
 #        echo 'End: ' $dataset $expname $langpair $representation 
 #

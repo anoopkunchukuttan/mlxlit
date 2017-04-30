@@ -35,8 +35,10 @@ FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('in_fname', '', 
         'input file containing sequences to analyse. one sequence per line.')
-tf.app.flags.DEFINE_string('out_fname', '', 
+tf.app.flags.DEFINE_string('out_img_fname', '', 
         'output image file showing contextual representations of characters to be analyzed')
+tf.app.flags.DEFINE_string('out_html_fname', '', 
+        'output HTML file showing contextual representations of characters to be analyzed, along with interactive context display')
 #tf.app.flags.DEFINE_string('char_fname', '', 
 #        'file containing characters for which embeddings are to be extracted. one character per line.')
 tf.app.flags.DEFINE_string('model_fname', '', 
@@ -353,13 +355,15 @@ def main(argv=None):
     for i in range(0,sequences.shape[0]): 
         labels.append(u''.join([ mapping[FLAGS.lang].get_char(sequences[i,j],FLAGS.lang)  for j in range(1,sequence_lengths[i]-1) ]))
 
-    #tooltip = mpld3.plugins.PointLabelTooltip(scatter, labels=labels)
-    #mpld3.plugins.connect(fig, tooltip)
+    tooltip = mpld3.plugins.PointLabelTooltip(scatter, labels=labels)
+    mpld3.plugins.connect(fig, tooltip)
     
-    #mpld3.save_html(fig,FLAGS.out_fname)
+    if FLAGS.out_html_fname != '': 
+        mpld3.save_html(fig,FLAGS.out_html_fname)
     ##mpld3.show(ip='10.129.2.170',port=10002, open_browser=False)
 
-    plt.savefig(FLAGS.out_fname)
+    if FLAGS.out_img_fname != '': 
+        plt.savefig(FLAGS.out_img_fname)
     ##plt.show()
 
 if __name__ == '__main__' :
