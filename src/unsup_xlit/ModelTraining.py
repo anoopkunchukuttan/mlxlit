@@ -19,6 +19,8 @@ from indicnlp import loader
 
 def decode(out_dir,epoch_no,lang_pairs,test_data,
         decode_output_op,decode_scores_op,
+        batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+        beam_size, topn,
         prefix_tgtlang,prefix_srclang,mapping,
         max_sequence_length, beam_size_val,topn_val): 
     """
@@ -29,8 +31,10 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
     lang_pairs: list of language pair tuples. 
     test_data: Dictionary of MonoDataReader object for various language pairs. 
                 Holds only the source language data 
+
     decode_output_op: dictionary of decoder output operation for every language pair 
     decode_scores_op: dictionary of decoder output scores operation for every language pair 
+
     prefix_srclang: see commandline flags 
     prefix_tgtlang: see commandline flags 
     mapping: Dictionary of mapping objects for each language
@@ -39,14 +43,6 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
     topn_val: 
     """
     
-    ## Creating placeholder variables 
-    batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
-    batch_sequence_masks = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
-    batch_sequence_lengths = tf.placeholder(shape=[None],dtype=tf.float32)
-
-    beam_size = tf.placeholder(dtype=tf.int32)
-    topn = tf.placeholder(dtype=tf.int32)
-
     test_loss=0.0
     for src_lang,tgt_lang in lang_pairs:
         lang_pair=(src_lang,tgt_lang)
@@ -106,29 +102,22 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
     
 
 def get_seq2seq_loss(lang_pairs, parallel_data,
+                        seq_loss_op,
+                        batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+                        batch_sequences_2, batch_sequence_masks_2, batch_sequence_lengths_2,
+                        dropout_keep_prob,
                         prefix_tgtlang, prefix_srclang, 
-                        mapping, max_sequence_length,
-                        seq_loss_op):
+                        mapping, max_sequence_length):
     """
     Function to compute the translation loss (cross entropy) 
 
     lang_pairs: list of language pair tuples. 
     parallel_data: Dictionary of ParallelDataReader object for various language pairs                 
+    seq_loss_op: dictionary of sequence loss operation for every language pair 
     prefix_srclang: see commandline flags 
     prefix_tgtlang: see commandline flags 
     mapping: Dictionary of mapping objects for each language
-    seq_loss_op: dictionary of sequence loss operation for every language pair 
     """
-
-    ## Creating placeholder variables 
-    batch_sequences = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
-    batch_sequence_masks = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
-    batch_sequence_lengths = tf.placeholder(shape=[None],dtype=tf.float32)
-
-    batch_sequences_2 = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.int32)
-    batch_sequence_masks_2 = tf.placeholder(shape=[None,max_sequence_length],dtype=tf.float32)
-    batch_sequence_lengths_2 = tf.placeholder(shape=[None],dtype=tf.float32)
-    
 
     ### start computation
     validation_loss = 0.0
@@ -528,9 +517,12 @@ if __name__ == '__main__' :
             valid_start_time=time.time()
 
             validation_loss=get_seq2seq_loss(parallel_valid_langs, parallel_valid_data,
+                                validation_seq_loss,
+                                batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+                                batch_sequences_2, batch_sequence_masks_2, batch_sequence_lengths_2,
+                                dropout_keep_prob,
                                 prefix_tgtlang, prefix_srclang, 
-                                mapping, max_sequence_length,
-                                validation_seq_loss)
+                                mapping, max_sequence_length)
             validation_losses.append(validation_loss)
 
             valid_end_time=time.time()
@@ -560,11 +552,15 @@ if __name__ == '__main__' :
 
                     test_loss=decode(outputs_dir, completed_epochs, test_langs, test_data,
                             infer_output, infer_output_scores,
+                            batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+                            beam_size, topn,
                             prefix_tgtlang, prefix_srclang, mapping,
                             max_sequence_length, beam_size_val, topn_val) 
 
                     valid_decode_loss=decode(valid_outputs_dir, completed_epochs, parallel_valid_langs, valid_decode_data,
                             infer_output, infer_output_scores,
+                            batch_sequences, batch_sequence_masks, batch_sequence_lengths,
+                            beam_size, topn,
                             prefix_tgtlang, prefix_srclang, mapping,
                             max_sequence_length, beam_size_val, topn_val) 
 
