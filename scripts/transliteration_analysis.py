@@ -12,7 +12,15 @@ from indicnlp.script import indic_scripts as isc
 from indicnlp.transliterate import unicode_transliterate  as indtrans
 from indicnlp import loader 
 
+import buckwalter
+
+### Create Arabic to Roman transliterator using buckwalter scheme
+a2r_xlit=buckwalter.Transliterator(mode='a2r')
+
 def get_column_name(x,tlang): 
+    """
+     Get column name (char) in ascii (romanized) 
+    """
     if isc.is_supported_language(tlang): 
         #return x if tlang=='hi' else indtrans.UnicodeIndicTransliterator.transliterate(x,tlang,'hi')
         if isc.in_coordinated_range(x,tlang): 
@@ -20,8 +28,7 @@ def get_column_name(x,tlang):
         else: 
             return str(hex(ord(x)))
     elif tlang=='ar': 
-        pass 
-        return x
+        return a2r_xlit.transliterate(x)
     else: 
         return x
 
@@ -36,9 +43,7 @@ def plot_confusion_matrix(confusion_df,tlang,image_fname):
         - Needs 'Lohit Devanagari' font to be installed 
     """
     
-    #matplotlib.rc('font', family='Lohit Kannada') 
     matplotlib.rcParams.update({'font.size': 8})
-
 
     schar=list(confusion_df.index)
     tchar=list(confusion_df.columns)
@@ -57,8 +62,8 @@ def plot_confusion_matrix(confusion_df,tlang,image_fname):
     
     plt.figure(figsize=(20,10))
 
-    plt.pcolor(data,cmap=plt.cm.gray_r,edgecolors='k')
-    #plt.pcolor(data,cmap=plt.cm.hot_r,edgecolors='k')
+    #plt.pcolor(data,cmap=plt.cm.gray_r,edgecolors='k')
+    plt.pcolor(data,cmap=plt.cm.hot_r,edgecolors='k')
     
     plt.colorbar()
     plt.xticks(np.arange(0,len(col_names))+0.5,col_names,rotation='vertical')
@@ -264,11 +269,10 @@ def run_generate_analysis(basedir,exp_conf_fname):
     #    exp_check = rec['exp'] in ['2_multilingual','2_bilingual'] 
     #
     #    ## krishna
-    #    dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
+    #    #dataset_check = rec['dataset'] in ['ar-slavic_latin', 'news_2015_reversed'] 
     #
     #    #### balaram 
-    #    ##dataset_check = rec['dataset'] in ['slavic_latin-ar', 'news_2015_indic', 'news_2015_official' ] 
-    #    #dataset_check = rec['dataset'] in ['news_2015_indic', 'news_2015_official' ] 
+    #    dataset_check = rec['dataset'] in ['slavic_latin-ar', 'news_2015_indic', 'news_2015_official' ] 
     #
     #    return exp_check and dataset_check 
 
@@ -540,7 +544,7 @@ if __name__ == '__main__':
     exp_list='results_with_accuracy.csv'
 
     ## command to generate the analysis files for each experiment 
-    #run_generate_analysis(basedir,exp_list) 
+    run_generate_analysis(basedir,exp_list) 
 
     ## command to compare bilingual and multilingual experiments 
     ## mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
@@ -560,10 +564,10 @@ if __name__ == '__main__':
     #aug_exp_list='results_with_accuracy_new2.csv'
     #run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
 
-    # get language dependent error rates 
-    exp_list='results_with_accuracy.csv'
-    aug_exp_list='results_with_accuracy_new.csv'
-    run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
+    ## get language dependent error rates 
+    #exp_list='results_with_accuracy.csv'
+    #aug_exp_list='results_with_accuracy_new.csv'
+    #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
     ### get error distribution based on vowel, consonants, others 
     #exp_list='results_with_accuracy.csv'
