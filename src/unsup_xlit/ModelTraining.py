@@ -62,8 +62,6 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
                                         sequences,sequence_masks,sequence_lengths,
                                         src_lang,mapping[src_lang])
     
-        #predicted_sequences_ids, predicted_scores = sess.run([decode_output_op[lang_pair],decode_scores_op[lang_pair]], feed_dict={batch_sequences: sequences, batch_sequence_lengths: sequence_lengths, beam_size: beam_size_val, topn: topn_val})
-    
         predicted_sequences_ids_list=[]
         predicted_scores_list=[]
         for start in xrange(0,sequences.shape[0],batch_size):

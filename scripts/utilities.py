@@ -223,6 +223,18 @@ def read_best_epoch(exp_conf_fname,dataset,exp,representation,src,tgt):
     elif resp_df.shape[0]==1:
         print resp_df.iterrows().next()[1]['epoch']
 
+
+def shuffle(infname,outfname): 
+
+    with codecs.open(infname,'r','utf-8') as infile, \
+         codecs.open(outfname,'w','utf-8') as outfile:
+
+        data_list=list(iter(infile))
+        random.shuffle(data_list)
+
+        for line in data_list: 
+            outfile.write(line)
+
 if __name__=='__main__': 
 
     commands = {
@@ -231,6 +243,7 @@ if __name__=='__main__':
             'compute_accuracy': compute_accuracy,
             'compute_accuracy_multilingual': compute_accuracy_multilingual,
             'read_best_epoch': read_best_epoch,
+            'shuffle': shuffle,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
