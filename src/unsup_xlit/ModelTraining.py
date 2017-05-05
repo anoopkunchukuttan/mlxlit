@@ -99,7 +99,7 @@ def decode(out_dir,epoch_no,lang_pairs,test_data,
         best_scores=predicted_scores[:,0]
         test_loss+= (-np.sum(best_scores))
 
-        return test_loss 
+    return test_loss 
     
 
 def get_seq2seq_loss(lang_pairs, parallel_data,

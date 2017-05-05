@@ -257,37 +257,37 @@ export CUDA_VISIBLE_DEVICES=0
 ###################### EVALUATE SPECIFIC ITERATION #################
 ##############################################################################################
 
-#dataset='news_2015_indic'
+#dataset='news_2015_reversed'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
 #for prefix in `seq -f '%03g' 1 40`
 #do 
 #
-#for expname in `echo 100_test`
+#for expname in `echo 2_multilingual_prefix_src`
 #do 
 #
 #    ######## Experiment loop starts here ########
 #
 #    #for langpair in `echo en-hi en-bn en-ta en-kn`
-#    #for langpair in `echo hi-en bn-en ta-en kn-en`
+#    for langpair in `echo hi-en bn-en ta-en kn-en`
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
 #    #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
-#    for langpair in `echo bn-hi`
+#    #for langpair in `echo ar-cs ar-pl ar-sk ar-sl`
 #    do
 #        src_lang=`echo $langpair | cut -f 1 -d '-'`
 #        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
 #    
 #        #for representation in `echo onehot phonetic`
-#        for representation in `echo onehot`
+#        for representation in `echo onehot_shared`
 #        do 
 #            #### output directory to select 
 #            ### for bilingual experiments 
-#            o=$output_dir/$expname/$representation/$langpair
+#            #o=$output_dir/$expname/$representation/$langpair
 #
 #            #### for other multilingual experiments  
-#            #o=$output_dir/$expname/$representation/multi-conf
+#            o=$output_dir/$expname/$representation/multi-conf
 #
 #            echo 'Start: ' $dataset $expname $langpair $representation $prefix 
 #    
@@ -874,3 +874,101 @@ export CUDA_VISIBLE_DEVICES=0
 #    --mapping_class CharacterMapping \
 #    --max_epochs 40 > out.log 2>&1 
 #    
+
+
+
+##########
+## DECODE
+#########
+
+dataset='news_2015_reversed'
+data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+
+expname="2_multilingual"
+representation="onehot_and_phonetic"
+
+#for langpair in `echo en-hi en-bn en-kn en-ta`
+#for langpair in `echo hi-en bn-en ta-en kn-en`
+#for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
+#for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
+#for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
+for langpair in `echo bn-en ta-en kn-en hi-en `
+do 
+
+    src_lang=`echo $langpair | cut -f 1 -d '-'`
+    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+    
+    o=$output_dir/$expname/$representation/multi-conf   #### Set this correctly for bilingual vs multilingual
+    
+    #### for every saved model, compute accuracy on the validation set 
+    ##### Note: Validation xml needs to be created 
+    
+    echo 'Start: ' $dataset $expname $langpair $representation 
+    
+    for prefix in `seq -f '%03g' 1 40`
+    do 
+        
+        prefix1=`echo $prefix | sed 's,^0\+,,g'`
+        echo $prefix  $prefix1     
+        
+        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
+        then 
+            ### for multilingual experiments  (en-indic)
+            rep_str="en:onehot,$tgt_lang:$representation"
+        elif [ $dataset = 'news_2015_reversed' ]
+        then 
+            ### for multilingual experiments  (indic-en)
+            rep_str="en:onehot,$src_lang:$representation"
+        elif [ $dataset = 'news_2015_indic' ]
+        then 
+            ##### for multilingual experiments  (indic-indic)
+            rep_str="$representation" 
+            if [ $representation = 'phonetic' ]
+            then 
+                more_opts="--separate_output_embedding"
+            fi 
+        elif [ $dataset = 'ar-slavic_latin' ]
+        then 
+            #  for multilingual experiments (AR-SLAVIC_LATIN)
+            rep_str="ar:onehot,$tgt_lang:$representation"
+            more_opts="--shared_mapping_class CharacterMapping"
+
+        elif [ $dataset = 'slavic_latin-ar' ]
+        then 
+            # for multilingual experiments (SLAVIC_LATIN-AR)
+            rep_str="ar:onehot,$src_lang:$representation"
+            more_opts="--shared_mapping_class CharacterMapping"
+        else
+            echo 'Invalid dataset'
+            exit 1
+        fi 
+
+        # outputs
+        resdir='outputs'
+        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
+            --lang_pair $langpair \
+            --beam_size 5 \
+            --mapping_dir "$o/mappings" \
+            --model_fname "$o/temp_models/my_model-$prefix1"  \
+            --representation $rep_str \
+            --in_fname    "$data_dir/$langpair/test/$langpair" \
+            --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
+
+        # validation 
+        resdir='validation'
+        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
+            --lang_pair $langpair \
+            --beam_size 5 \
+            --mapping_dir "$o/mappings" \
+            --model_fname "$o/temp_models/my_model-$prefix1"  \
+            --representation $rep_str \
+            --in_fname    "$data_dir/$langpair/parallel_valid/$langpair.$src_lang" \
+            --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
+    
+    done 
+    
+    echo 'End: ' $dataset $expname $langpair $representation 
+
+done 
+
