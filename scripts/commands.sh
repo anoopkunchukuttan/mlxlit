@@ -5,7 +5,7 @@ export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=$MLXLIT_BASE/src/conll16_unsup_xlit
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 ###################################################################################################
 ################################ supervised transliteration - multilingual #########################
@@ -881,19 +881,20 @@ export CUDA_VISIBLE_DEVICES=0
 ## DECODE
 #########
 
-dataset='news_2015_reversed'
+dataset='ar-slavic_latin'
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 
-expname="2_multilingual"
-representation="onehot_and_phonetic"
+expname="2_multilingual_zeroshot"
+representation="onehot_shared"
 
 #for langpair in `echo en-hi en-bn en-kn en-ta`
 #for langpair in `echo hi-en bn-en ta-en kn-en`
 #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
 #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
 #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
-for langpair in `echo bn-en ta-en kn-en hi-en `
+#for langpair in `echo pl-ar sk-ar sl-ar cs-ar `
+for langpair in `echo ar-sk ar-sl ar-pl`
 do 
 
     src_lang=`echo $langpair | cut -f 1 -d '-'`
@@ -952,6 +953,7 @@ do
             --mapping_dir "$o/mappings" \
             --model_fname "$o/temp_models/my_model-$prefix1"  \
             --representation $rep_str \
+            $more_opts \
             --in_fname    "$data_dir/$langpair/test/$langpair" \
             --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
 
@@ -963,6 +965,7 @@ do
             --mapping_dir "$o/mappings" \
             --model_fname "$o/temp_models/my_model-$prefix1"  \
             --representation $rep_str \
+            $more_opts \
             --in_fname    "$data_dir/$langpair/parallel_valid/$langpair.$src_lang" \
             --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
     
