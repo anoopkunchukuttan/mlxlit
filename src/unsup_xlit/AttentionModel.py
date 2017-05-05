@@ -545,6 +545,134 @@ class AttentionModel():
 
         return (tf.reshape(final_outputs,[-1,topn,self.max_sequence_length]),final_scores/self.max_sequence_length)
 
+    def transliterate_beam_with_lm(self, source_lang, sequences, sequence_lengths, target_lang, beam_size, topn):
+        """
+            Decode using the trained seq2seq model with beam search and return the topn results and scores
+
+            Note: The implementation generates a sequence of length max_sequence_length always. 
+            It might be better to stop the sequence generation after EOW is generated.
+
+            Parameters: 
+
+            source_lang: input language
+            sequences: Tensor of integers of shape containing the input symbol ids 
+                        Shape: (batch_size x max_sequence_length)
+            sequence_lengths: Tensor of shape (batch_size) containing length of each  sequence input 
+            target_lang: target language
+            beam_size: size of beam used for beam search while decoding
+            topn: get the 'topn' best outputs 
+
+            Outputs: 
+
+            final_outputs: Tensor containing symbol ids of shape (batch_size x topn x max_sequence_length)
+            final_scores : Tensor containing log-likelihood scores for each candidate of shape (batch_size x topn).  
+                           The scores are length normalized
+            
+        """
+
+        #### compute hidden representation first     
+        initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang,tf.constant(1.0))
+        initial_state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
+
+        ### start decoding 
+
+        batch_size = tf.shape(sequences)[0]
+        cur_beam_size=1
+
+        prev_states = tf.reshape(tf.tile(initial_state, [1,cur_beam_size]), [-1,self.dec_state_size]) 
+        prev_scores = tf.tile(tf.constant(0.0,shape=[1,1]),[batch_size*cur_beam_size,1])
+        prev_symbols = None
+
+        cell = tf.nn.rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
+
+        prev_best_outputs=None
+
+        final_outputs=None
+        final_scores=None
+
+        for i in range(self.max_sequence_length):
+            if(i==0):
+                #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
+                x = tf.expand_dims(
+                        tf.nn.embedding_lookup(self.embed_outW[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_outb[target_lang],
+                        0)
+                current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
+            else:
+                current_emb = tf.nn.embedding_lookup(self.embed_outW[target_lang],tf.reshape(prev_symbols,[-1]))+self.embed_outb[target_lang]
+
+            if i > 0 : tf.get_variable_scope().reuse_variables()
+
+            ### compute the context vector 
+            current_input=None
+            if self.enc_type=='simple_lstm_noattn':
+                current_input=current_emb
+            else: 
+                ## using the attention mechanism
+                context=self.compute_attention_context(prev_states,current_emb,enc_output)
+                current_input=tf.concat(1,[current_emb,context])
+
+            # Run one step of the decoder cell. Updates 'state' and store output in 'output'
+            output = None
+            state = None
+            with tf.variable_scope('decoder'):
+                if i > 0 : tf.get_variable_scope().reuse_variables()
+                output, state = cell(current_input,prev_states)
+
+            logit_words = tf.add(tf.matmul(output,self.out_W[target_lang]),self.out_b[target_lang])
+
+            ### check dimentionality and orientation 
+            prev_scores = prev_scores + tf.nn.log_softmax(logit_words)
+
+            prev_scores_by_instance = tf.reshape(prev_scores,[-1,cur_beam_size*self.vocab_size[target_lang]])
+
+            best_scores, best_indices = tf.nn.top_k(prev_scores_by_instance, beam_size)
+
+            best_symbols = best_indices % self.vocab_size[target_lang] 
+            best_prev_beams = best_indices // self.vocab_size[target_lang] 
+
+            best_flat_indices = tf.tile(tf.reshape(tf.range(0,batch_size),[-1,1]),[1,cur_beam_size])*cur_beam_size + best_prev_beams
+
+            ### update variables for the next iteration 
+            prev_scores = tf.reshape(best_scores, [-1,1])
+            prev_symbols = tf.reshape(best_symbols, [-1,1])
+           
+            prev_states=  tf.gather( state, tf.reshape(best_flat_indices,[-1]) )
+
+            #### compute best-k candidates now 
+            prev_best_outputs_for_final=prev_best_outputs
+            if(i==0): 
+                prev_best_outputs=prev_symbols
+            else: 
+                top_beam_prev_outputs = tf.gather( prev_best_outputs, tf.reshape(best_flat_indices,[-1]) )
+                prev_best_outputs = tf.concat(1,[top_beam_prev_outputs,prev_symbols])
+
+            ##### update beam size after first iteration 
+            if i==0:
+                cur_beam_size=beam_size
+                enc_output=tf.unpack(
+                        tf.reshape(   tf.tile(tf.pack(  enc_output   ),[1,1,beam_size]),
+                                    [self.max_sequence_length,-1,self.input_encoder.get_output_size()]
+                                  )
+                        )
+
+            #### get top-n outputs for the last iteration                 
+            if i==self.max_sequence_length-1: 
+                final_scores, final_indices = tf.nn.top_k(prev_scores_by_instance, topn)
+
+                final_symbols    = final_indices %  self.vocab_size[target_lang] 
+                final_prev_beams = final_indices // self.vocab_size[target_lang] 
+
+                final_flat_indices = tf.tile(tf.reshape(tf.range(0,batch_size),[-1,1]),[1,topn])*beam_size + final_prev_beams
+
+                ### update variables for the next iteration 
+                final_flat_symbols = tf.reshape(final_symbols, [-1,1])
+           
+                #### compute best-n candidates now 
+                top_n_prev_outputs = tf.gather( prev_best_outputs_for_final, tf.reshape(final_flat_indices,[-1]) )
+                final_outputs = tf.concat(1,[top_n_prev_outputs,final_flat_symbols])
+
+        return (tf.reshape(final_outputs,[-1,topn,self.max_sequence_length]),final_scores/self.max_sequence_length)
+
     ## Given source sequences, and target language, predict character ids sequences in target_lang
     ## Explanation same as that of seq_loss
     ## Output is tensorflow op
