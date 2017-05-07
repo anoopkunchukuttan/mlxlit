@@ -191,12 +191,6 @@ class AttentionModel():
                 self.out_b[lang] = tf.Variable(tf.constant(0., shape = [self.vocab_size[lang]]),
                                             name='out_b_{}'.format(lang))
         
-        ## Hack for zeroshot transliteratoin for Model 2 (en-indic)               
-        #self.out_W['hi']=(self.out_W['ta']+self.out_W['kn']+self.out_W['bn'])/3.0
-        #self.out_b['hi']=(self.out_b['ta']+self.out_b['kn']+self.out_b['bn'])/3.0
-        #self.out_W['hi']=self.out_W['bn']
-        #self.out_b['hi']=self.out_b['bn']
-
         ## Attention mechanism paramters
         ## size of the context vector (will be twice encoder cell output size for bidirectional RNN)
         self.ctxvec_size=self.input_encoder.get_output_size()
@@ -205,6 +199,16 @@ class AttentionModel():
         self.attn_W = tf.Variable(tf.random_uniform([self.dec_state_size+self.embedding_size+self.ctxvec_size,1],
             -1*max_val, max_val), name = 'attn_W')
         self.attn_b = tf.Variable(tf.constant(0., shape=[1]), name = 'attn_b')
+
+        ####### Parameters related to language model ### 
+
+        self.lm_model = None 
+        self.wlm = None
+
+    def initialize_lm(self,lm_model,wlm=0.5):
+
+        self.lm_model = lm_model
+        self.wlm = wlm
 
     def compute_hidden_representation(self, sequences, sequence_lengths, lang, dropout_keep_prob):
         """
@@ -570,8 +574,13 @@ class AttentionModel():
             
         """
 
+        ## NEW: assert that the lm paramters have been set 
+        assert(self.lm_model is not None)
+        start_char=self.mapping[target_lang].get_index(Mapping.Mapping.GO)
+
         #### compute hidden representation first     
-        initial_state, enc_output = self.compute_hidden_representation(sequences,sequence_lengths, source_lang,tf.constant(1.0))
+        initial_state, enc_output = self.compute_hidden_representation(
+                            sequences,sequence_lengths, source_lang,tf.constant(1.0))
         initial_state = tf.matmul(initial_state,self.state_adapt_W) + self.state_adapt_b 
 
         ### start decoding 
@@ -579,9 +588,14 @@ class AttentionModel():
         batch_size = tf.shape(sequences)[0]
         cur_beam_size=1
 
-        prev_states = tf.reshape(tf.tile(initial_state, [1,cur_beam_size]), [-1,self.dec_state_size]) 
+        prev_states = tf.reshape(tf.tile(initial_state, [1,cur_beam_size]), [-1,self.dec_state_size])
         prev_scores = tf.tile(tf.constant(0.0,shape=[1,1]),[batch_size*cur_beam_size,1])
         prev_symbols = None
+
+        ## NEW
+        prev_lm_states = tf.reshape( tf.tile( self.lm_model.initial_state(batch_size), [1,cur_beam_size]), 
+                                     [-1,lm_model.state_size()]
+                                   ) 
 
         cell = tf.nn.rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
 
@@ -594,11 +608,13 @@ class AttentionModel():
             if(i==0):
                 #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
-                        tf.nn.embedding_lookup(self.embed_outW[target_lang],self.mapping[target_lang].get_index(Mapping.Mapping.GO))+self.embed_outb[target_lang],
+                            tf.nn.embedding_lookup(self.embed_outW[target_lang], start_char) + \
+                            self.embed_outb[target_lang], \
                         0)
                 current_emb = tf.reshape(tf.tile(x,[batch_size,1]),[-1,self.embedding_size])
             else:
-                current_emb = tf.nn.embedding_lookup(self.embed_outW[target_lang],tf.reshape(prev_symbols,[-1]))+self.embed_outb[target_lang]
+                current_emb = tf.nn.embedding_lookup(self.embed_outW[target_lang],tf.reshape(prev_symbols,[-1])) + \
+                            self.embed_outb[target_lang]
 
             if i > 0 : tf.get_variable_scope().reuse_variables()
 
@@ -619,9 +635,19 @@ class AttentionModel():
                 output, state = cell(current_input,prev_states)
 
             logit_words = tf.add(tf.matmul(output,self.out_W[target_lang]),self.out_b[target_lang])
+            
+            ## NEW: get lm scores
+            lm_input = None
+            if i==0: 
+                lm_input = tf.reshape(tf.tile(start_char,[batch_size,1]),[-1])
+            else:  
+                lm_input = prev_symbols
+            lm_logit_words, lm_state = self.lm_model.logit_next_char(prev_symbols, prev_lm_states)
 
             ### check dimentionality and orientation 
-            prev_scores = prev_scores + tf.nn.log_softmax(logit_words)
+            prev_scores = prev_scores + tf.nn.log_softmax(  (1.0-self.wlm)*logit_words + self.wlm*lm_logit_words )
+            #av_scores=(1.0-self.wlm)*tf.nn.softmax(logit_words) + self.wlm*tf.nn.softmax(lm_logit_words) 
+            #prev_scores = prev_scores + tf.log(av_scores)
 
             prev_scores_by_instance = tf.reshape(prev_scores,[-1,cur_beam_size*self.vocab_size[target_lang]])
 
@@ -637,6 +663,8 @@ class AttentionModel():
             prev_symbols = tf.reshape(best_symbols, [-1,1])
            
             prev_states=  tf.gather( state, tf.reshape(best_flat_indices,[-1]) )
+            ## NEW
+            prev_lm_states=  tf.gather( lm_state, tf.reshape(best_flat_indices,[-1]) )
 
             #### compute best-k candidates now 
             prev_best_outputs_for_final=prev_best_outputs

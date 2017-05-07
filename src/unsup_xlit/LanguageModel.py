@@ -131,6 +131,14 @@ class LanguageModel():
 
         return (logit_words, state)
 
+    def initial_state(self,batch_size):
+
+        return self.encoder_cell.zero_state(batch_size)
+
+    def state_size(self):
+
+        return self.encoder_cell.state_size
+
 def get_average_loss(mono_data, loss_op,
         pl_batch_sequences, pl_batch_sequence_lengths):
     """
