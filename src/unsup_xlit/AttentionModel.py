@@ -594,7 +594,7 @@ class AttentionModel():
 
         ## NEW
         prev_lm_states = tf.reshape( tf.tile( self.lm_model.initial_state(batch_size), [1,cur_beam_size]), 
-                                     [-1,lm_model.state_size()]
+                                     [-1,self.lm_model.state_size()]
                                    ) 
 
         cell = tf.nn.rnn_cell.DropoutWrapper(self.decoder_cell[target_lang],output_keep_prob=tf.constant(1.0))
@@ -605,8 +605,8 @@ class AttentionModel():
         final_scores=None
 
         for i in range(self.max_sequence_length):
+
             if(i==0):
-                #current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],[batch_size,1]),[-1,self.embedding_size])
                 x = tf.expand_dims(
                             tf.nn.embedding_lookup(self.embed_outW[target_lang], start_char) + \
                             self.embed_outb[target_lang], \
@@ -639,10 +639,18 @@ class AttentionModel():
             ## NEW: get lm scores
             lm_input = None
             if i==0: 
-                lm_input = tf.reshape(tf.tile(start_char,[batch_size,1]),[-1])
+                #lm_input = tf.reshape(tf.tile(start_char,[batch_size,1]),[-1,1])
+                #lm_input = tf.constant(start_char,dtype=tf.int32,shape=(batch_size,1))
+                lm_input = tf.reshape(tf.tile(tf.constant(start_char,dtype=tf.int32,shape=(1,1)),[batch_size,1]),[-1,1])
             else:  
                 lm_input = prev_symbols
-            lm_logit_words, lm_state = self.lm_model.logit_next_char(prev_symbols, prev_lm_states)
+
+            lm_logit_words = None
+            lm_state = None 
+
+            with tf.variable_scope('lang_model'):
+                if i > 0 : tf.get_variable_scope().reuse_variables()
+                lm_logit_words, lm_state = self.lm_model.logit_next_char(lm_input, prev_lm_states)
 
             ### check dimentionality and orientation 
             prev_scores = prev_scores + tf.nn.log_softmax(  (1.0-self.wlm)*logit_words + self.wlm*lm_logit_words )
