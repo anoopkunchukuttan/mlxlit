@@ -5,7 +5,7 @@ export MLXLIT_HOME=$MLXLIT_BASE/src/multiling_unsup_xlit
 export XLIT_HOME=$MLXLIT_BASE/src/conll16_unsup_xlit
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=0
 
 ###################################################################################################
 ################################ supervised transliteration - multilingual #########################
@@ -862,18 +862,19 @@ export CUDA_VISIBLE_DEVICES=2
 ## where the target language has access to a larger target data for 
 ## multilingual model. Hence, we use larger LMs for the bilingual models
 
-dataset='news_2015_reversed' 
-export NO_OUTEMBED=1
+dataset='slavic_latin-ar' 
+#export NO_OUTEMBED=1
 expname='2_bilingual'
 representation='onehot' # for source language
-tgt_lang='en'
+tgt_lang='ar'
 
 lm_data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/lm_data/
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 
 #for src_lang in `echo bn kn ta hi`
-for src_lang in `echo hi`
+#for src_lang in `echo cs pl sk sl`
+for src_lang in `echo sl`
 do 
     langpair=$src_lang-$tgt_lang
     o=$output_dir/$expname/$representation/$langpair
@@ -949,6 +950,7 @@ do
                 "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.id" \
                 "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
                 "$o/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
+                "$o/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
                 "system" "conll2016" "$src_lang" "$tgt_lang"  >> $logf
     
         # run evaluation 
