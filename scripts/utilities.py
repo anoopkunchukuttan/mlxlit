@@ -101,6 +101,8 @@ def early_stop_best(metric,maxepoch,*options):
         loss_scores=read_negacc(maxepoch,*options)
 
     min_epoch=min(enumerate(loss_scores),key=operator.itemgetter(1))
+
+    print '{} {}'.format(min_epoch[0]+1,min_epoch[1]),
     return min_epoch[0]+1
 
 def early_stop_best_multilingual(metric,maxepoch,*options):
@@ -243,6 +245,7 @@ if __name__=='__main__':
             'compute_accuracy': compute_accuracy,
             'compute_accuracy_multilingual': compute_accuracy_multilingual,
             'read_best_epoch': read_best_epoch,
+            'early_stop_best': early_stop_best,
             'shuffle': shuffle,
     }
 

@@ -8,6 +8,7 @@ import numpy as np
 import calendar,time
 
 import AttentionModel
+import LanguageModel
 import Mapping
 import MonoDataReader
 import ParallelDataReader
@@ -94,6 +95,8 @@ if __name__ == '__main__' :
 
     # Setting the language parameters
     lang_pair=tuple(args.lang_pair.split('-'))
+    source_lang = lang_pair[0]
+    target_lang = lang_pair[1]
 
     #######################################
     # Reading data and creating mappings  #
@@ -153,6 +156,7 @@ if __name__ == '__main__' :
     model = AttentionModel.AttentionModel(mapping,representation,max_sequence_length,
             embedding_size,enc_rnn_size,dec_rnn_size,
             enc_type,separate_output_embedding)
+
     # Pass parameters
 
     ## Creating placeholder for sequences, masks and lengths and dropout keep probability 
@@ -163,7 +167,8 @@ if __name__ == '__main__' :
     topn = tf.placeholder(dtype=tf.int32)
 
     # Predict output for test sequences
-    outputs, outputs_scores = model.transliterate_beam(lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size, topn)
+    outputs, outputs_scores = model.transliterate_beam(
+                lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size, topn)
 
     #Saving model
     saver = tf.train.Saver(max_to_keep = 3)
@@ -176,11 +181,9 @@ if __name__ == '__main__' :
     sess = tf.Session(config=config)
     sess.run(tf.initialize_all_variables())
     saver.restore(sess,model_fname)
-    
+
     print "Session started"
 
-    source_lang = lang_pair[0]
-    target_lang = lang_pair[1]
     sequences, sequence_masks, sequence_lengths = test_data.get_data()
 
     test_time=0.0
