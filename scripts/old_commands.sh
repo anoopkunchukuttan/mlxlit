@@ -1,204 +1,4 @@
 
-#####################################################
-#################### LANGUAGE MODEL ################
-#####################################################
-#
-###### varying training data size and representation unit ###
-#
-#dataset=news12
-#
-#outdir=$MLXLIT_BASE/results/lm_eval/1_train_size/$dataset
-#
-#
-##mkdir -p $outdir
-##for lang in `echo hi kn` #bn ta`
-##do 
-##    for exp in `echo phonetic onehot` 
-##    do 
-##        rm $outdir/${exp}_${lang}.txt
-##        rm $outdir/${exp}_${lang}.log
-##    
-##        #for train_size in `echo "1000 2000 5000 15000 25000 35000"`
-##        for train_size in `echo "1000 2000 5000 8000 10000 13000"`
-##        do 
-##            echo "Running Training size: $train_size"
-##            python $MLXLIT_HOME/src/lm_eval/ptb_word_lm.py \
-##                --data_path=/home/development/anoop/experiments/multilingual_unsup_xlit/data/lm_eval/$dataset/$lang \
-##                --representation=$exp \
-##                --train_size=$train_size \
-##                --lang=$lang >> \
-##                $outdir/${exp}_${lang}.txt 2>> \
-##                $outdir/${exp}_${lang}.log
-##        done 
-##    done 
-##done
-##
-#
-#for lang in `echo hi kn`
-#do 
-#    for exp in `echo phonetic onehot` 
-#    do 
-#        cat $outdir/${exp}_${lang}.txt | grep -i 'Test Perplexity' | sed 's,Test Perplexity:,,g' | sed  "s,^,$exp $lang,g"
-#    done 
-#done 
-#
-
-
-######################################################
-##################### TRANSFER PIVOTING ################
-######################################################
-
-####### Multilingual ####
-
-#dataset='news_2015_indic'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-#expname='2_pivoting_multilingual'
-#representation='onehot_shared'
-#
-#spm=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_multilingual/$representation/indic-en
-#spm_prefix=011
-#spm_prefix1=`echo $spm_prefix | sed 's,^0\+,,g'`
-#
-#ptm=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015/2_multilingual/$representation/en-indic
-#ptm_prefix=006
-#ptm_prefix1=`echo $ptm_prefix | sed 's,^0\+,,g'`
-#
-#o=$output_dir/$expname/$representation/indic-indic
-#rm -rf $o
-#mkdir -p $o/outputs
-#    
-#for langpair in `echo bn-hi bn-kn bn-ta hi-bn hi-kn hi-ta kn-bn kn-hi kn-ta ta-bn ta-hi ta-kn`
-#do 
-#    echo 'Start: ' $dataset $expname $langpair $representation 
-#    
-#    src_lang=`echo $langpair | cut -f 1 -d '-'`
-#    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-#
-#    output_1_fname="$o/outputs/001test.s1out.$src_lang-en-$tgt_lang.en"
-#    
-#    python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-#        --lang_pair $src_lang-en \
-#        --beam_size 5 \
-#        --mapping_dir "$spm/mappings" \
-#        --model_fname "$spm/temp_models/my_model-$spm_prefix1"  \
-#        --representation "en:onehot,$src_lang:$representation" \
-#        --batch_size  100 \
-#        --in_fname    "$data_dir/$langpair/test/$langpair" \
-#        --out_fname   $output_1_fname
-#    
-#    input_2_fname=$o/outputs/001test.s2in.$src_lang-en-$tgt_lang.en
-#    sed  's/ ||| /|/g;s/ |/|/g' $output_1_fname | \
-#        cut -d'|' -f2  > $input_2_fname
-#    
-#    output_2_fname="$o/outputs/001test.s2out.$src_lang-en-$tgt_lang.$tgt_lang"
-#    python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-#        --lang_pair en-$tgt_lang\
-#        --beam_size 5 \
-#        --mapping_dir "$ptm/mappings" \
-#        --model_fname "$ptm/temp_models/my_model-$ptm_prefix1"  \
-#        --representation "en:onehot,$tgt_lang:$representation" \
-#        --batch_size  100 \
-#        --in_fname   $input_2_fname \
-#        --out_fname  $output_2_fname
-#    
-#    final_output_fname="$o/outputs/001test.nbest.$langpair.$tgt_lang"
-#    python utilities.py transfer_pivot_translate $output_1_fname $output_2_fname $final_output_fname
-#
-#    echo 'End: ' $dataset $expname $langpair $representation 
-#done 
-
-######## Bilingual ####
-#
-#function get_spm_epoch(){
-#
-#  if [ $1 == 'kn' ]
-#  then 
-#      echo '006'
-#  else 
-#      echo '009'
-#  fi 
-#
-#}
-#
-#function get_ptm_epoch(){
-#
-#  if   [ $1 == 'hi' ]
-#  then 
-#      echo '008'
-#  elif [ $1 == 'bn' ]
-#  then 
-#      echo '008'
-#  elif [ $1 == 'kn' ]
-#  then 
-#      echo '010'
-#  elif [ $1 == 'ta' ]
-#  then 
-#      echo '009'
-#  fi 
-#}
-#
-#dataset='news_2015_indic'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-#expname='2_pivoting_bilingual'
-#representation='onehot'
-#    
-#for langpair in `echo bn-hi bn-kn bn-ta hi-bn hi-kn hi-ta kn-bn kn-hi kn-ta ta-bn ta-hi ta-kn`
-#do 
-#    echo 'Start: ' $dataset $expname $langpair $representation 
-#    
-#    src_lang=`echo $langpair | cut -f 1 -d '-'`
-#    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-#
-#    o=$output_dir/$expname/$representation/$langpair
-#    rm -rf $o
-#    mkdir -p $o/outputs
-#
-#    spm=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_bilingual/$representation/$src_lang-en
-#    spm_prefix=`get_spm_epoch $src_lang`
-#    spm_prefix1=`echo $spm_prefix | sed 's,^0\+,,g'`
-#    
-#    ptm=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015/2_bilingual/$representation/en-$tgt_lang
-#    ptm_prefix=`get_ptm_epoch $tgt_lang`
-#    ptm_prefix1=`echo $ptm_prefix | sed 's,^0\+,,g'`
-#
-#    output_1_fname="$o/outputs/001test.s1out.$src_lang-en-$tgt_lang.en"
-#    
-#    python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-#        --lang_pair $src_lang-en \
-#        --beam_size 5 \
-#        --mapping_dir "$spm/mappings" \
-#        --model_fname "$spm/temp_models/my_model-$spm_prefix1"  \
-#        --representation "en:onehot,$src_lang:$representation" \
-#        --batch_size  100 \
-#        --in_fname    "$data_dir/$langpair/test/$langpair" \
-#        --out_fname   $output_1_fname
-#    
-#    input_2_fname=$o/outputs/001test.s2in.$src_lang-en-$tgt_lang.en
-#    sed  's/ ||| /|/g;s/ |/|/g' $output_1_fname | \
-#        cut -d'|' -f2  > $input_2_fname
-#    
-#    output_2_fname="$o/outputs/001test.s2out.$src_lang-en-$tgt_lang.$tgt_lang"
-#    python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-#        --lang_pair en-$tgt_lang\
-#        --beam_size 5 \
-#        --mapping_dir "$ptm/mappings" \
-#        --model_fname "$ptm/temp_models/my_model-$ptm_prefix1"  \
-#        --representation "en:onehot,$tgt_lang:$representation" \
-#        --batch_size  100 \
-#        --in_fname   $input_2_fname \
-#        --out_fname  $output_2_fname
-#    
-#    final_output_fname="$o/outputs/001test.nbest.$langpair.$tgt_lang"
-#    python utilities.py transfer_pivot_translate $output_1_fname $output_2_fname $final_output_fname
-#
-#    echo 'End: ' $dataset $expname $langpair $representation 
-#done 
-
-
 ###########################################################################
 ########  Create gold standard xml files for the validation set also
 ###########################################################################
@@ -552,3 +352,106 @@
 #2_multilingual|onehot_shared|kn-ta|010|4.71042811871
 #2_multilingual|onehot_shared|ta-hi|010|4.71042811871
 #2_multilingual|onehot_shared|ta-kn|010|4.71042811871
+
+
+
+##################################
+### DECODE TEST AND VALIDATION ###
+##################################
+
+#
+#dataset='ar-slavic_latin'
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+#
+#expname="2_multilingual_zeroshot"
+#representation="onehot_shared"
+#
+##for langpair in `echo en-hi en-bn en-kn en-ta`
+##for langpair in `echo hi-en bn-en ta-en kn-en`
+##for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
+##for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
+##for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
+##for langpair in `echo pl-ar sk-ar sl-ar cs-ar `
+#for langpair in `echo ar-sk ar-sl ar-pl`
+#do 
+#
+#    src_lang=`echo $langpair | cut -f 1 -d '-'`
+#    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#    
+#    o=$output_dir/$expname/$representation/multi-conf   #### Set this correctly for bilingual vs multilingual
+#    
+#    #### for every saved model, compute accuracy on the validation set 
+#    ##### Note: Validation xml needs to be created 
+#    
+#    echo 'Start: ' $dataset $expname $langpair $representation 
+#    
+#    for prefix in `seq -f '%03g' 1 40`
+#    do 
+#        
+#        prefix1=`echo $prefix | sed 's,^0\+,,g'`
+#        echo $prefix  $prefix1     
+#        
+#        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
+#        then 
+#            ### for multilingual experiments  (en-indic)
+#            rep_str="en:onehot,$tgt_lang:$representation"
+#        elif [ $dataset = 'news_2015_reversed' ]
+#        then 
+#            ### for multilingual experiments  (indic-en)
+#            rep_str="en:onehot,$src_lang:$representation"
+#        elif [ $dataset = 'news_2015_indic' ]
+#        then 
+#            ##### for multilingual experiments  (indic-indic)
+#            rep_str="$representation" 
+#            if [ $representation = 'phonetic' ]
+#            then 
+#                more_opts="--separate_output_embedding"
+#            fi 
+#        elif [ $dataset = 'ar-slavic_latin' ]
+#        then 
+#            #  for multilingual experiments (AR-SLAVIC_LATIN)
+#            rep_str="ar:onehot,$tgt_lang:$representation"
+#            more_opts="--shared_mapping_class CharacterMapping"
+#
+#        elif [ $dataset = 'slavic_latin-ar' ]
+#        then 
+#            # for multilingual experiments (SLAVIC_LATIN-AR)
+#            rep_str="ar:onehot,$src_lang:$representation"
+#            more_opts="--shared_mapping_class CharacterMapping"
+#        else
+#            echo 'Invalid dataset'
+#            exit 1
+#        fi 
+#
+#        # outputs
+#        resdir='outputs'
+#        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
+#            --lang_pair $langpair \
+#            --beam_size 5 \
+#            --mapping_dir "$o/mappings" \
+#            --model_fname "$o/temp_models/my_model-$prefix1"  \
+#            --representation $rep_str \
+#            $more_opts \
+#            --in_fname    "$data_dir/$langpair/test/$langpair" \
+#            --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
+#
+#        # validation 
+#        resdir='validation'
+#        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
+#            --lang_pair $langpair \
+#            --beam_size 5 \
+#            --mapping_dir "$o/mappings" \
+#            --model_fname "$o/temp_models/my_model-$prefix1"  \
+#            --representation $rep_str \
+#            $more_opts \
+#            --in_fname    "$data_dir/$langpair/parallel_valid/$langpair.$src_lang" \
+#            --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
+#    
+#    done 
+#    
+#    echo 'End: ' $dataset $expname $langpair $representation 
+#
+#done 
+
+

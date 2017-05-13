@@ -257,7 +257,7 @@ export CUDA_VISIBLE_DEVICES=1
 ###################### EVALUATE SPECIFIC ITERATION #################
 ##############################################################################################
 
-#dataset='news_2015_reversed'
+#dataset='slavic_latin-ar'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
@@ -270,10 +270,10 @@ export CUDA_VISIBLE_DEVICES=1
 #    ######## Experiment loop starts here ########
 #
 #    #for langpair in `echo en-hi en-bn en-ta en-kn`
-#    for langpair in `echo hi-en bn-en ta-en kn-en`
+#    #for langpair in `echo hi-en bn-en ta-en kn-en`
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
 #    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
-#    #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
+#    for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
 #    #for langpair in `echo ar-cs ar-pl ar-sk ar-sl`
 #    do
 #        src_lang=`echo $langpair | cut -f 1 -d '-'`
@@ -376,6 +376,7 @@ export CUDA_VISIBLE_DEVICES=1
 #
 #    done         
 #done     
+
 
 ########################################################################
 ################# Decoding #########################
@@ -724,254 +725,114 @@ export CUDA_VISIBLE_DEVICES=1
 #done
 #
 
-
-##############################################################################################
-###################### EVALUATE SPECIFIC ITERATION #################
-##############################################################################################
-
-#dataset='news_2015_indic'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-#for prefix in `seq -f '%03g' 1 40`
-#do 
-#
-#for expname in `echo 100_test`
-#do 
-#
-#    ######## Experiment loop starts here ########
-#
-#    #for langpair in `echo en-hi en-bn en-ta en-kn`
-#    #for langpair in `echo hi-en bn-en ta-en kn-en`
-#    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
-#    #for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
-#    #for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
-#    for langpair in `echo bn-hi`
-#    do
-#        src_lang=`echo $langpair | cut -f 1 -d '-'`
-#        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-#    
-#        #for representation in `echo onehot phonetic`
-#        for representation in `echo onehot`
-#        do 
-#            #### output directory to select 
-#            ### for bilingual experiments 
-#            o=$output_dir/$expname/$representation/$langpair
-#
-#            #### for other multilingual experiments  
-#            #o=$output_dir/$expname/$representation/multi-conf
-#
-#            echo 'Start: ' $dataset $expname $langpair $representation $prefix 
-#    
-#            #### Evaluation starts 
-#
-#            ####### ON TEST SET 
-#            
-#            resdir=outputs
-#    
-#            # generate NEWS 2015 evaluation format output file 
-#            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-#                    "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.id" \
-#                    "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
-#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
-#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                    "system" "conll2016" "$src_lang" "$tgt_lang"  
-#            
-#            # run evaluation 
-#            python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-#                    -t "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
-#                    -i "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                    -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
-#                     > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
-#    
-#            ####### ON VALIDATION SET 
-#            resdir=validation
-#            # generate NEWS 2015 evaluation format output file 
-#            python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-#                    "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.id" \
-#                    "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
-#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
-#                    "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                    "system" "conll2016" "$src_lang" "$tgt_lang"  
-#            
-#            # run evaluation 
-#            python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-#                    -t "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
-#                    -i "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#                    -o "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
-#                     > "$o/$resdir/${prefix}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
-#
-#            echo 'End: ' $dataset $expname $langpair $representation $prefix
-#    
-#        done 
-#    done     
-#done 
-#done
-
 ##########################################################
 ################ LANGUAGE MODELLING #####################
 ##########################################################
 
-#dataset='ar-slavic_latin'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset/lm
-#
-##restore_epoch_number="2"
-#
-#for expname in `echo `
+### discovering optimal hyperparameters 
+lang=hi
+representation=onehot 
+
+data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/lm_data/$lang
+outdir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/lm/$lang
+
+#for esize in `echo 64 128 256`
+for esize in `echo 256`
+do 
+    for rsize in `echo 64 128 256 512`
+    do 
+        echo $lang $representation $esize $rsize 
+
+        o=$outdir/e_$esize-r_$rsize
+        rm -rf $o
+        mkdir -p $o
+
+        python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
+            train \
+            --lang $lang \
+            --representation $representation \
+            --mapping_class CharacterMapping \
+            --max_epochs 50 \
+            --data_dir  $data_dir \
+            --output_dir $o \
+            --embedding_size $esize \
+            --rnn_size       $rsize \
+        > $o/train.log 2>&1 & 
+
+    done 
+done 
+
+#for esize in `echo 64 128 256`
 #do 
-#
-#    ######## Experiment loop starts here ########
-#
-#    for lang in `echo en`
-#    do
-#        #for representation in `echo onehot phonetic`
-#        for representation in `echo onehot`
-#        do 
-#            o=$output_dir/$expname/$representation/$lang
-#            
-#            echo 'Start: ' $dataset $expname $lang $representation 
-#
-#            if [ $dataset = 'ar-slavic_latin' ]
-#            then 
-#                more_opts="--mapping_class CharacterMapping"
-#            elif [ $dataset = 'slavic_latin-ar' ]
-#            then 
-#                more_opts="--mapping_class CharacterMapping"
-#            fi 
-#    
-#            #### Training and Testing 
-#            rm -rf $o
-#            mkdir -p $o
-#
-#            python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
-#                --lang "$lang" \
-#                --data_dir   "$data_dir" \
-#                --output_dir "$o" \
-#                --representation "$representation" \
-#                --max_epochs 40 \
-#                $more_opts \
-#                >> $o/train.log 2>&1 
-#    
-#                #--start_from $restore_epoch_number \
-#
-#            echo 'End: ' $dataset $expname $langpair $representation 
-#    
-#        done 
-#    done     
-#
+#    for rsize in `echo 64 128 256 512`
+#    do 
+#        echo -n $lang $representation $esize $rsize " "
+#        python utilities.py early_stop_best \
+#              loss \
+#              50 \
+#              /home/development/anoop/experiments/multilingual_unsup_xlit/results/lm/en/e_$esize-r_$rsize/train.log
+#    done
 #done 
 
-#rm -rf out2
+#mapping_fname="/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_multilingual_match/onehot_shared/multi-conf/mappings/mapping_en.json"
 #
-#mapping_fname="/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed_match/2_multilingual/onehot_shared/multi-conf/mappings/mapping_en.json"
+#outdir=out_map
+#
+#### train 
+#rm -rf $outdir
 #python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
+#    train \
 #    --lang en \
 #    --data_dir  indir \
-#    --output_dir out2 \
-#    --use_mapping $mapping_fname \
+#    --output_dir $outdir \
 #    --representation onehot \
 #    --mapping_class CharacterMapping \
-#    --max_epochs 40 > out.log 2>&1 
-#    
-
-
-
-##########
-## DECODE
-#########
-
-dataset='ar-slavic_latin'
-data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-
-expname="2_multilingual_zeroshot"
-representation="onehot_shared"
-
-#for langpair in `echo en-hi en-bn en-kn en-ta`
-#for langpair in `echo hi-en bn-en ta-en kn-en`
-#for langpair in `echo cs-ar pl-ar sk-ar sl-ar`
-#for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn bn-ta ta-bn hi-kn kn-hi `
-#for langpair in `echo bn-hi bn-kn hi-bn hi-ta kn-bn kn-ta ta-hi ta-kn`
-#for langpair in `echo pl-ar sk-ar sl-ar cs-ar `
-for langpair in `echo ar-sk ar-sl ar-pl`
-do 
-
-    src_lang=`echo $langpair | cut -f 1 -d '-'`
-    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#    --embededding_size 256 \
+#    --rnn_size 512 \
+#    --max_epochs 50 \
+#> $outdir/train.log 2>&1 
     
-    o=$output_dir/$expname/$representation/multi-conf   #### Set this correctly for bilingual vs multilingual
-    
-    #### for every saved model, compute accuracy on the validation set 
-    ##### Note: Validation xml needs to be created 
-    
-    echo 'Start: ' $dataset $expname $langpair $representation 
-    
-    for prefix in `seq -f '%03g' 1 40`
-    do 
-        
-        prefix1=`echo $prefix | sed 's,^0\+,,g'`
-        echo $prefix  $prefix1     
-        
-        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
-        then 
-            ### for multilingual experiments  (en-indic)
-            rep_str="en:onehot,$tgt_lang:$representation"
-        elif [ $dataset = 'news_2015_reversed' ]
-        then 
-            ### for multilingual experiments  (indic-en)
-            rep_str="en:onehot,$src_lang:$representation"
-        elif [ $dataset = 'news_2015_indic' ]
-        then 
-            ##### for multilingual experiments  (indic-indic)
-            rep_str="$representation" 
-            if [ $representation = 'phonetic' ]
-            then 
-                more_opts="--separate_output_embedding"
-            fi 
-        elif [ $dataset = 'ar-slavic_latin' ]
-        then 
-            #  for multilingual experiments (AR-SLAVIC_LATIN)
-            rep_str="ar:onehot,$tgt_lang:$representation"
-            more_opts="--shared_mapping_class CharacterMapping"
+#    --use_mapping $mapping_fname \
 
-        elif [ $dataset = 'slavic_latin-ar' ]
-        then 
-            # for multilingual experiments (SLAVIC_LATIN-AR)
-            rep_str="ar:onehot,$src_lang:$representation"
-            more_opts="--shared_mapping_class CharacterMapping"
-        else
-            echo 'Invalid dataset'
-            exit 1
-        fi 
+###### test 
+#python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
+#    "test" \
+#    --lang en \
+#    --in_fname  indir/test.txt \
+#    --model_fname $outdir/models/model-2 \
+#    --representation onehot \
+#    --mapping_fname $mapping_fname \
+#    --mapping_class CharacterMapping \
+#> $outdir.log 2>&1 
 
-        # outputs
-        resdir='outputs'
-        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-            --lang_pair $langpair \
-            --beam_size 5 \
-            --mapping_dir "$o/mappings" \
-            --model_fname "$o/temp_models/my_model-$prefix1"  \
-            --representation $rep_str \
-            $more_opts \
-            --in_fname    "$data_dir/$langpair/test/$langpair" \
-            --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
 
-        # validation 
-        resdir='validation'
-        python $MLXLIT_HOME/src/unsup_xlit/ModelDecoding.py \
-            --lang_pair $langpair \
-            --beam_size 5 \
-            --mapping_dir "$o/mappings" \
-            --model_fname "$o/temp_models/my_model-$prefix1"  \
-            --representation $rep_str \
-            $more_opts \
-            --in_fname    "$data_dir/$langpair/parallel_valid/$langpair.$src_lang" \
-            --out_fname   "$o/$resdir/${prefix}test.nbest.$langpair.$tgt_lang"
-    
-    done 
-    
-    echo 'End: ' $dataset $expname $langpair $representation 
+##### debug lm
 
-done 
+#python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
+#    "print_vars" \
+#    --lang en \
+#    --model_fname $outdir/models/model-2 \
+#    --representation onehot \
+#    --mapping_fname $mapping_fname \
+#    --mapping_class CharacterMapping
+
+######## decoding with LM
+
+#dataset='news_2015_reversed'
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+#o=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_multilingual_match/onehot_shared/multi-conf
+#
+#python $MLXLIT_HOME/src/unsup_xlit/ModelDecodingWithLm.py \
+#    --lang_pair hi-en \
+#    --beam_size 2 \
+#    --mapping_dir "$o/mappings" \
+#    --model_fname "$o/temp_models/my_model-20"  \
+#    --representation 'hi:onehot_shared,en:onehot' \
+#    --fuse_lm $outdir/models/model-2 \
+#    --lm_weight 0.5 \
+#    --in_fname    "$data_dir/multi-conf/test/hi-en" \
+#    --out_fname   out.en
+
+    #--in_fname    "indir/test.txt" \
+
 
