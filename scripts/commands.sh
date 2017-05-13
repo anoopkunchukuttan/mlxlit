@@ -729,50 +729,64 @@ export CUDA_VISIBLE_DEVICES=1
 ################ LANGUAGE MODELLING #####################
 ##########################################################
 
-### discovering optimal hyperparameters 
-lang=hi
+##### discovering optimal hyperparameters 
+lang=en
 representation=onehot 
 
 data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/lm_data/$lang
 outdir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/lm/$lang
 
-#for esize in `echo 64 128 256`
-for esize in `echo 256`
+##for esize in `echo 16 32 64 128 256`
+#for esize in `echo 8`
+#do 
+#    #for rsize in `echo 32 64 128 256 512`
+#    for rsize in `echo 8`
+#    do 
+#        echo $lang $representation $esize $rsize 
+#
+#        o=$outdir/e_$esize-r_$rsize
+#        rm -rf $o
+#        mkdir -p $o
+#
+#        python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
+#            train \
+#            --lang $lang \
+#            --representation $representation \
+#            --mapping_class CharacterMapping \
+#            --max_epochs 50 \
+#            --data_dir  $data_dir \
+#            --output_dir $o \
+#            --embedding_size $esize \
+#            --rnn_size       $rsize \
+#        > $o/train.log 2>&1 & 
+#
+#    done 
+#done 
+
+for er in `echo 8-8 16-16 32-32 32-64`
+do 
+    esize=`echo $er | cut -f 1 -d '-'`
+    rsize=`echo $er | cut -f 2 -d '-'`
+
+    echo -n $lang $representation $esize $rsize " "
+    
+    python utilities.py early_stop_best \
+           loss \
+           50 \
+           $outdir/e_$esize-r_$rsize/train.log
+done 
+
+for esize in `echo 64 128 256`
 do 
     for rsize in `echo 64 128 256 512`
     do 
-        echo $lang $representation $esize $rsize 
-
-        o=$outdir/e_$esize-r_$rsize
-        rm -rf $o
-        mkdir -p $o
-
-        python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
-            train \
-            --lang $lang \
-            --representation $representation \
-            --mapping_class CharacterMapping \
-            --max_epochs 50 \
-            --data_dir  $data_dir \
-            --output_dir $o \
-            --embedding_size $esize \
-            --rnn_size       $rsize \
-        > $o/train.log 2>&1 & 
-
-    done 
+        echo -n $lang $representation $esize $rsize " "
+        python utilities.py early_stop_best \
+              loss \
+              50 \
+              $outdir/e_$esize-r_$rsize/train.log
+    done
 done 
-
-#for esize in `echo 64 128 256`
-#do 
-#    for rsize in `echo 64 128 256 512`
-#    do 
-#        echo -n $lang $representation $esize $rsize " "
-#        python utilities.py early_stop_best \
-#              loss \
-#              50 \
-#              /home/development/anoop/experiments/multilingual_unsup_xlit/results/lm/en/e_$esize-r_$rsize/train.log
-#    done
-#done 
 
 #mapping_fname="/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_reversed/2_multilingual_match/onehot_shared/multi-conf/mappings/mapping_en.json"
 #
