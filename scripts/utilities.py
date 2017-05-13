@@ -1,6 +1,6 @@
 import itertools as it, operator 
 import codecs 
-import sys,os
+import sys,os,glob
 from collections import defaultdict
 
 import numpy as np
@@ -25,6 +25,20 @@ def convert_output_format(infname,outfname):
         it.imap(lambda chars: u' '.join(it.takewhile(lambda x:x != u'EOW',it.dropwhile(lambda x:x==u'GO',chars))) , 
                 read_monolingual_corpus(infname))
         )
+
+def find_best_lm_weight(dirname,slang,tlang): 
+
+    loss_scores=[]
+
+    for fname in glob.glob('{}/*.eval'.format(dirname)):
+        with codecs.open(fname,'r') as resfile:
+            acc=float(resfile.readline().strip().split(':')[1].strip())
+            param=float(fname.split('/')[-1].split('_')[0])
+            loss_scores.append((param,-acc))
+
+    best_param,negacc=min(loss_scores,key=operator.itemgetter(1))
+    print '{}|{}'.format(best_param,-negacc),
+    return (best_param,-negacc)
 
 def read_negacc(maxepoch,dirname,slang,tlang): 
 
@@ -102,7 +116,7 @@ def early_stop_best(metric,maxepoch,*options):
 
     min_epoch=min(enumerate(loss_scores),key=operator.itemgetter(1))
 
-    print '{} {}'.format(min_epoch[0]+1,min_epoch[1]),
+    print '{}|{}'.format(min_epoch[0]+1,min_epoch[1]),
     return min_epoch[0]+1
 
 def early_stop_best_multilingual(metric,maxepoch,*options):
@@ -247,6 +261,7 @@ if __name__=='__main__':
             'read_best_epoch': read_best_epoch,
             'early_stop_best': early_stop_best,
             'shuffle': shuffle,
+            'find_best_lm_weight': find_best_lm_weight,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])

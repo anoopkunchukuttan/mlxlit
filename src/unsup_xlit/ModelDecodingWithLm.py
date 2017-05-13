@@ -201,7 +201,6 @@ if __name__ == '__main__' :
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    #sess.run(tf.initialize_all_variables())
 
     #### Creating Translation Model graph creation 
     print "Start graph creation for Translation Model"
@@ -210,25 +209,33 @@ if __name__ == '__main__' :
             enc_type,separate_output_embedding)
 
     # Predict output for test sequences
-    ### this graph is being created only to allow loading of variables 
+    ### a secondary purpose for crearing this graph is to allow loading of variables 
     outputs, outputs_scores = model.transliterate_beam(
                 lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size, topn)
-
+    
+    ### now restore variables from translation model 
     saver_trans = tf.train.Saver()
     saver_trans.restore(sess,model_fname)
+    print "Loaded translation model parameters"
 
     # Creating Language Model graph creation 
     if fuse_lm is not None: 
+
+        print "Start graph creation for Language Model"
         lm_model=LanguageModel.LanguageModel(target_lang,mapping[target_lang],representation[target_lang], \
                     args.lm_max_seq_length, args.lm_embedding_size, args.lm_rnn_size)
 
         loss_op=None
         with tf.variable_scope(tf.get_variable_scope(), reuse=False):
             loss_op = lm_model.average_loss(batch_sequences, batch_sequence_lengths, 1.0)
-        print 'created language model operation' 
         #tf.get_variable_scope().reuse_variables()
+
+        ### now restore variables from language model 
+
+        # the RNN's variables have to be explicitly obtained 
         lm_mat =tf.get_variable('lang_model/BasicLSTMCell/Linear/Matrix')
         lm_bias=tf.get_variable('lang_model/BasicLSTMCell/Linear/Bias')
+        ## load only the LM variables. Trying to load all variables will fail to load trans model variables
         vars_to_restore = [
                             lm_model.Wmat,
                             lm_model.embed_b,
@@ -239,15 +246,18 @@ if __name__ == '__main__' :
                           ]
         saver_lm = tf.train.Saver(vars_to_restore)
         saver_lm.restore(sess,fuse_lm)
+        print "Loaded language model parameters"
 
+        ## sample code if the language model has successfully loaded. Its a hack, use carefully
         #test_data = MonoDataReader.MonoDataReader(lang_pair[1], in_fname, mapping[lang_pair[1]],max_sequence_length)
         #ppl=get_average_loss(test_data, loss_op, batch_sequences, batch_sequence_lengths, sess)
         #print 'Perplexity: {}'.format(ppl)
 
+        ## Now prepare the translation model to fuse with the language model 
         model.initialize_lm(lm_model,lm_weight)
         outputs, outputs_scores = model.transliterate_beam_with_lm(
                 lang_pair[0],batch_sequences,batch_sequence_lengths,lang_pair[1],beam_size, topn)
-
+        print "Prepared transation model for shallow LM fusion" 
 
     print "Reading testdata"
 
@@ -276,7 +286,8 @@ if __name__ == '__main__' :
         if prefix_srclang: 
             data_sequences,data_sequence_masks,data_sequence_lengths = Mapping.prefix_sequence_with_token(
                     data_sequences,data_sequence_masks,data_sequence_lengths, 
-                    source_lang,mapping[source_lang])
+                feed_dict={batch_sequences: data_sequences, batch_sequence_lengths: data_sequence_lengths, 
+                    beam_size: beam_size_val, topn: topn_val})
 
         b_sequences_ids, b_scores = sess.run([outputs, outputs_scores], 
                 feed_dict={batch_sequences: data_sequences, batch_sequence_lengths: data_sequence_lengths, 
