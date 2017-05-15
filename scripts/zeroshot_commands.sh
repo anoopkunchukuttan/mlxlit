@@ -359,7 +359,7 @@ do
     done 
 
     x=`python utilities.py find_best_lm_weight \
-            $o/validation_with_lm \
+            $final_dir/validation_with_lm \
             $src_lang $tgt_lang `
     best_lm_weight=`echo $x | cut -f 1 -d '|' `
     echo "Best LM weight: $best_lm_weight" 
