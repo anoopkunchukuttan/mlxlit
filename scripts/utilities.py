@@ -128,7 +128,7 @@ def early_stop_best_str(metric,maxepoch,*options):
 
     min_epoch=min(enumerate(loss_scores),key=operator.itemgetter(1))
 
-    print '{}|{}'.format(min_epoch[0]+1,(-1.0?(metric=='accuracy'):1.0)*min_epoch[1]),
+    print '{}|{}'.format(min_epoch[0]+1,(-1.0 if (metric=='accuracy') else 1.0)*min_epoch[1]),
 
 def early_stop_best(metric,maxepoch,*options):
     

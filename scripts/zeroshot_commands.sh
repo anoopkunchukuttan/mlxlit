@@ -297,6 +297,14 @@ do
     best_lm_epoch=`echo $x | cut -f 1 -d '|' `
     echo "Best LM epoch: $best_lm_epoch"
 
+    ####### find the best epoch for translation model  ##########
+    echo 'Find the best epoch for translation model'
+    x=`python utilities.py compute_accuracy \
+            $output_dir \
+            $src_lang $proxy_lang \
+            40`
+    best_trans_epoch=`echo $x | cut -f 1 -d '|' `
+    echo "Best translation model epoch: $best_trans_epoch" 
 
     ####### #### find the best LM weights on validation set ##########
     ### UNCOMMENT THIS BLOCK IF LM WEIGHTS HAVE TO BE DETERMINED #########
@@ -336,15 +344,15 @@ do
 
         # generate NEWS 2015 evaluation format output file 
         python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-                "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.id" \
-                "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
+                "$data_dir/$src_lang-$tgt_lang/parallel_valid/valid.$src_lang-$tgt_lang.id" \
+                "$data_dir/$src_lang-$tgt_lang/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
                 "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
                 "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
                 "system" "conll2016" "$src_lang" "$tgt_lang" 
     
         # run evaluation 
         python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-                -t "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
+                -t "$data_dir/$src_lang-$tgt_lang/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
                 -i "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
                 -o "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
                  > "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
@@ -359,15 +367,6 @@ do
     ### END OF BLOCK #########
 
     echo "Selected LM weight: $best_lm_weight"
-
-    ####### find the best epoch for translation model  ##########
-    echo 'Find the best epoch for translation model'
-    x=`python utilities.py compute_accuracy \
-            $output_dir \
-            $src_lang $proxy_lang \
-            40`
-    best_trans_epoch=`echo $x | cut -f 1 -d '|' `
-    echo "Best translation model epoch: $best_trans_epoch" 
 
     ########## transliterate source to proxy #########
     python $MLXLIT_HOME/src/unsup_xlit/ModelDecodingWithLm.py \
