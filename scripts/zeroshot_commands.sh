@@ -6,8 +6,7 @@ export XLIT_HOME=$MLXLIT_BASE/src/conll16_unsup_xlit
 export PYTHONPATH=$PYTHONPATH:$MLXLIT_HOME/src:$XLIT_HOME/src 
 export INDIC_NLP_HOME=/home/development/anoop/installs/indic_nlp_library/
 
-
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 ######################################################
 ##################### TRANSFER PIVOTING ################
@@ -159,22 +158,24 @@ export CUDA_VISIBLE_DEVICES=1
 #########################################################################
 ############  ZEROSHOT TRANSLITERATION WITH UNSEEN LANGUAGE #############
 #########################################################################
-#
-#### common block
-#src_lang=en
-#tgt_lang=hi
-#
-#dataset='news_2015_official' 
-##more_opts="--shared_mapping_class CharacterMapping"
-#
-#expname='2_multilingual_zeroshot'
-#representation='onehot_shared' # for source language
-#
-#data_dir_moses=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset/$expname/$representation/multi-conf
-#
-###### baseline transliteration system: just use the output of proxy
+
+### common block
+src_lang=en
+tgt_lang=hi
+
+dataset='news_2015_official' 
+#more_opts="--shared_mapping_class CharacterMapping"
+
+expname='2_multilingual_zeroshot'
+representation='onehot_shared' # for source language
+
+data_dir_moses=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
+data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset/$expname/$representation/multi-conf
+
+##################################################################################
+###### baseline transliteration system: just use the output of proxy #######
+##################################################################################
 ###for proxy_lang in `echo pl sk sl`
 ##for proxy_lang in `echo bn kn ta`
 ##do 
@@ -235,116 +236,184 @@ export CUDA_VISIBLE_DEVICES=1
 ##
 ##done 
 #
-#
-######### transliterate with proxy and fuse with tgt language model 
+##################################################################################
+######### transliterate with proxy and fuse with tgt language model #########
+##################################################################################
+
+## fixed lm weight experiment
+#exp=lm_fusion
 #best_lm_weight=0.2  ## a hyperparameter 
-#
-###for proxy_lang in `echo pl sk sl`
-#for proxy_lang in `echo bn kn ta`
-#do 
-#    echo "***********************************"
-#    echo "Using $proxy_lang as proxy language" 
-#    echo "***********************************"
-#    echo 
-#
-#    final_dir="$output_dir/proxy_for_${tgt_lang}/lm_fusion/$proxy_lang"
-#    lm_data_dir=$final_dir/lm_data_dir
-#    lm_dir=$final_dir/lm_dir
-#
-#    mkdir -p $final_dir
-#    mkdir -p $lm_data_dir 
-#    mkdir $lm_dir
-#    
-#    ## represent monolingual data of target language in the script of the proxy language 
-#
-#    ## copy 
-#    cp -r $data_dir_moses/$src_lang-$tgt_lang/*.$tgt_lang $lm_data_dir
-#    ## transliteration not necessary for Indic since mapping using IndicPhoneticMapping is language neural
-#
-#    ### train language model on the target language 
-#    #######
-#    ## create LM for target language with same vocabulary as the translation model (proxy language) 
-#    echo "Create LM for target language with same vocabulary as the translation model"
-#
-#    python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
-#        train \
-#        --lang       $tgt_lang \
-#        --data_dir   $lm_data_dir \
-#        --output_dir $lm_dir \
-#        --representation onehot_shared \
-#        --mapping_class  IndicPhoneticMapping \
-#        --use_mapping $output_dir/mappings/mapping_${proxy_lang}.json \
-#        --embedding_size 32 \
-#        --rnn_size 32 \
-#        --max_epochs 30 \
-#    > $lm_dir/train.log 2>&1 
-#
-#    #######
-#    ## find best epoch for LM
-#    echo 'Finding the best epoch for the LM' 
-#    x=`python utilities.py early_stop_best \
-#          loss \
-#          30 \
-#          $lm_dir/train.log`
-#    best_lm_epoch=`echo $x | cut -f 1 -d '|' `
-#    echo "Best LM epoch: $best_lm_epoch"
-#
-#    echo "Selected LM weight: $best_lm_weight"
-#
-#    ### find the best epoch for translation model
-#    echo 'Find the best epoch for translation model'
-#    x=`python utilities.py compute_accuracy \
-#            $output_dir \
-#            $src_lang $proxy_lang \
-#            40`
-#    best_trans_epoch=`echo $x | cut -f 1 -d '|' `
-#    echo "Best translation model epoch: $best_trans_epoch" 
-#
-#    ### transliterate source to proxy 
-#    python $MLXLIT_HOME/src/unsup_xlit/ModelDecodingWithLm.py \
-#        --lang_pair $src_lang-$proxy_lang \
-#        --beam_size 5 \
-#        --mapping_dir "$output_dir/mappings" \
-#        --model_fname "$output_dir/temp_models/my_model-$best_trans_epoch"  \
-#        --representation "$src_lang:onehot,$proxy_lang:$representation" \
-#        $more_opts \
-#        --fuse_lm $lm_dir/models/model-$best_lm_epoch \
-#        --lm_weight $best_lm_weight \
-#        --lm_embedding_size 32 \
-#        --lm_rnn_size 32 \
-#        --lm_max_seq_length 30 \
-#        --in_fname    "$data_dir/$src_lang-$tgt_lang/test/$src_lang-$tgt_lang" \
-#        --out_fname   "$final_dir/test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang" 
-#
-#    ## postprocess to convert script to target language script 
-#
-#    #### just copy if the scripts are the same 
-#    #cp "$final_dir/test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang"  \
-#    #   "$final_dir/test.nbest.$src_lang-$tgt_lang.$tgt_lang" 
-#    
-#    ## or transliterate
-#    python $INDIC_NLP_HOME/src/indicnlp/transliterate/unicode_transliterate.py \
-#        transliterate \
-#        "$final_dir/test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang"  \
-#        "$final_dir/test.nbest.$src_lang-$tgt_lang.$tgt_lang" \
-#        $proxy_lang $tgt_lang 
-#
-#    # generate NEWS 2015 evaluation format output file 
-#    python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-#            "$data_dir/$src_lang-$tgt_lang/test/test.$src_lang-$tgt_lang.id" \
-#            "$data_dir/$src_lang-$tgt_lang/test/test.$src_lang-$tgt_lang.xml" \
-#            "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
-#            "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#            "system" "conll2016" "$src_lang" "$tgt_lang"  
-#    
-#    # run evaluation 
-#    python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-#            -t "$data_dir/$src_lang-$tgt_lang/test/test.$src_lang-$tgt_lang.xml" \
-#            -i "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#            -o "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
-#             > "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
-#
-#done 
+
+## fixed lm weight experiment
+exp=lm_fusion_oracle
+### weights are determined using parallel src-tgt validation set. Uncomment block in the loop to enable 
+
+##for proxy_lang in `echo pl sk sl`
+for proxy_lang in `echo bn kn ta`
+do 
+    echo "***********************************"
+    echo "Using $proxy_lang as proxy language" 
+    echo "***********************************"
+    echo 
+
+    final_dir="$output_dir/proxy_for_${tgt_lang}/$exp/$proxy_lang"
+    lm_data_dir=$final_dir/lm_data_dir
+    lm_dir=$final_dir/lm_dir
+
+    mkdir -p $final_dir
+    mkdir -p $lm_data_dir 
+    mkdir $lm_dir
+    
+    ####### represent monolingual data of target language in the script of the proxy language #######
+
+    ## copy 
+    cp -r $data_dir_moses/$src_lang-$tgt_lang/*.$tgt_lang $lm_data_dir
+    ## transliteration not necessary for Indic since mapping using IndicPhoneticMapping is language neural
+
+    ############ train language model on the target language ########
+    #######
+    ## create LM for target language with same vocabulary as the translation model (proxy language) 
+    echo "Create LM for target language with same vocabulary as the translation model"
+
+    python $MLXLIT_HOME/src/unsup_xlit/LanguageModel.py \
+        train \
+        --lang       $tgt_lang \
+        --data_dir   $lm_data_dir \
+        --output_dir $lm_dir \
+        --representation onehot_shared \
+        --mapping_class  IndicPhoneticMapping \
+        --use_mapping $output_dir/mappings/mapping_${proxy_lang}.json \
+        --embedding_size 32 \
+        --rnn_size 32 \
+        --max_epochs 30 \
+    > $lm_dir/train.log 2>&1 
+
+    ######### find best epoch for LM ##############
+    echo 'Finding the best epoch for the LM' 
+    x=`python utilities.py early_stop_best \
+          loss \
+          30 \
+          $lm_dir/train.log`
+    best_lm_epoch=`echo $x | cut -f 1 -d '|' `
+    echo "Best LM epoch: $best_lm_epoch"
+
+
+    ####### #### find the best LM weights on validation set ##########
+    ### UNCOMMENT THIS BLOCK IF LM WEIGHTS HAVE TO BE DETERMINED #########
+    echo 'Find the best LM weight' 
+    mkdir -p $final_dir/validation_with_lm
+
+    for lm_weight in `echo 0.1 0.2 0.3 0.4 0.5`
+    do 
+        echo "Trying LM weight: $lm_weight" 
+
+        python $MLXLIT_HOME/src/unsup_xlit/ModelDecodingWithLm.py \
+            --lang_pair $src_lang-$proxy_lang \
+            --beam_size 5 \
+            --mapping_dir "$output_dir/mappings" \
+            --model_fname "$output_dir/temp_models/my_model-$best_trans_epoch"  \
+            --representation "$src_lang:onehot,$proxy_lang:$representation" \
+            $more_opts \
+            --fuse_lm $lm_dir/models/model-$best_lm_epoch \
+            --lm_weight $lm_weight \
+            --lm_embedding_size 32 \
+            --lm_rnn_size 32 \
+            --lm_max_seq_length 30 \
+            --in_fname  "$data_dir/$src_lang-$tgt_lang/parallel_valid/$src_lang-$tgt_lang.$src_lang" \
+            --out_fname   "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang" 
+
+        #### just copy if the scripts are the same 
+        #cp "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang" \
+        #"$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.$tgt_lang" 
+        
+        
+        ## or transliterate
+        python $INDIC_NLP_HOME/src/indicnlp/transliterate/unicode_transliterate.py \
+            transliterate \
+            "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang" \
+            "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.$tgt_lang" \
+            $proxy_lang $tgt_lang 
+
+        # generate NEWS 2015 evaluation format output file 
+        python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+                "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.id" \
+                "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
+                "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
+                "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+                "system" "conll2016" "$src_lang" "$tgt_lang" 
+    
+        # run evaluation 
+        python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+                -t "$data_dir/$langpair/parallel_valid/valid.$src_lang-$tgt_lang.xml" \
+                -i "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+                -o "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
+                 > "$final_dir/validation_with_lm/${lm_weight}_test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
+    done 
+
+    x=`python utilities.py find_best_lm_weight \
+            $o/validation_with_lm \
+            $src_lang $tgt_lang `
+    best_lm_weight=`echo $x | cut -f 1 -d '|' `
+    echo "Best LM weight: $best_lm_weight" 
+
+    ### END OF BLOCK #########
+
+    echo "Selected LM weight: $best_lm_weight"
+
+    ####### find the best epoch for translation model  ##########
+    echo 'Find the best epoch for translation model'
+    x=`python utilities.py compute_accuracy \
+            $output_dir \
+            $src_lang $proxy_lang \
+            40`
+    best_trans_epoch=`echo $x | cut -f 1 -d '|' `
+    echo "Best translation model epoch: $best_trans_epoch" 
+
+    ########## transliterate source to proxy #########
+    python $MLXLIT_HOME/src/unsup_xlit/ModelDecodingWithLm.py \
+        --lang_pair $src_lang-$proxy_lang \
+        --beam_size 5 \
+        --mapping_dir "$output_dir/mappings" \
+        --model_fname "$output_dir/temp_models/my_model-$best_trans_epoch"  \
+        --representation "$src_lang:onehot,$proxy_lang:$representation" \
+        $more_opts \
+        --fuse_lm $lm_dir/models/model-$best_lm_epoch \
+        --lm_weight $best_lm_weight \
+        --lm_embedding_size 32 \
+        --lm_rnn_size 32 \
+        --lm_max_seq_length 30 \
+        --in_fname    "$data_dir/$src_lang-$tgt_lang/test/$src_lang-$tgt_lang" \
+        --out_fname   "$final_dir/test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang" 
+
+    ########## postprocess to convert script to target language script ##########
+
+    #### just copy if the scripts are the same 
+    #cp "$final_dir/test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang"  \
+    #   "$final_dir/test.nbest.$src_lang-$tgt_lang.$tgt_lang" 
+    
+    ## or transliterate
+    python $INDIC_NLP_HOME/src/indicnlp/transliterate/unicode_transliterate.py \
+        transliterate \
+        "$final_dir/test.nbest.$src_lang-$tgt_lang.proxy.$tgt_lang"  \
+        "$final_dir/test.nbest.$src_lang-$tgt_lang.$tgt_lang" \
+        $proxy_lang $tgt_lang 
+
+    # generate NEWS 2015 evaluation format output file 
+    python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+            "$data_dir/$src_lang-$tgt_lang/test/test.$src_lang-$tgt_lang.id" \
+            "$data_dir/$src_lang-$tgt_lang/test/test.$src_lang-$tgt_lang.xml" \
+            "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
+            "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+            "system" "conll2016" "$src_lang" "$tgt_lang"  
+    
+    # run evaluation 
+    python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+            -t "$data_dir/$src_lang-$tgt_lang/test/test.$src_lang-$tgt_lang.xml" \
+            -i "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+            -o "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
+             > "$final_dir/test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
+
+done 
 
 ############################
 #######  ZEROSHOT: MANY-MANY
