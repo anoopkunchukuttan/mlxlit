@@ -9,6 +9,9 @@ from scipy.misc.common import logsumexp
 import itertools as it
 import random
 
+from indicnlp.script import  indic_scripts as isc
+from indicnlp import loader
+
 def read_monolingual_corpus(corpus_fname): 
     with codecs.open(corpus_fname,'r','utf-8') as infile:
         for w in infile: 
@@ -18,6 +21,13 @@ def write_monolingual_corpus(corpus_fname,output_list):
     with codecs.open(corpus_fname,'w','utf-8') as outfile:
         for output in output_list: 
             outfile.write(u' '.join(output) + '\n')
+
+def read_parallel_corpus(src_fname,tgt_fname):
+    with codecs.open(src_fname,'r','utf-8') as src_file,\
+         codecs.open(tgt_fname,'r','utf-8') as tgt_file:
+
+        for sline, tline in it.izip(iter(src_file),iter(tgt_file)):           
+            yield ( sline.strip().split() , tline.strip().split() )
 
 def convert_output_format(infname,outfname): 
 
@@ -263,17 +273,141 @@ def shuffle(infname,outfname):
         for line in data_list: 
             outfile.write(line)
 
+def lcsr_indic(srcw,tgtw,slang,tlang):
+    score_mat=np.zeros((len(srcw)+1,len(tgtw)+1))
+
+    for si,sc in enumerate(srcw,1): 
+        for ti,tc in enumerate(tgtw,1): 
+            so=isc.get_offset(sc,slang)
+            to=isc.get_offset(tc,tlang)
+
+            if isc.in_coordinated_range_offset(so) and isc.in_coordinated_range_offset(to) and so==to: 
+                score_mat[si,ti]=score_mat[si-1,ti-1]+1.0
+            elif not (isc.in_coordinated_range_offset(so) or isc.in_coordinated_range_offset(to)) and sc==tc: 
+                score_mat[si,ti]=score_mat[si-1,ti-1]+1.0
+            else: 
+                score_mat[si,ti]= max(
+                    score_mat[si,ti-1],
+                    score_mat[si-1,ti])
+
+    return (score_mat[-1,-1]/float(max(len(srcw),len(tgtw))),float(len(srcw)),float(len(tgtw)))
+
+def lcsr_any(srcw,tgtw,slang,tlang):
+    score_mat=np.zeros((len(srcw)+1,len(tgtw)+1))
+
+    for si,sc in enumerate(srcw,1): 
+        for ti,tc in enumerate(tgtw,1): 
+
+            if sc==tc: 
+                score_mat[si,ti]=score_mat[si-1,ti-1]+1.0
+            else: 
+                score_mat[si,ti]= max(
+                    score_mat[si,ti-1],
+                    score_mat[si-1,ti])
+
+    return (score_mat[-1,-1]/float(max(len(srcw),len(tgtw))),float(len(srcw)),float(len(tgtw)))
+
+def lcsr(srcw,tgtw,slang,tlang):
+
+    if slang==tlang or not isc.is_supported_language(slang) or not isc.is_supported_language(tlang):
+        return lcsr_any(srcw,tgtw,slang,tlang)
+    else:  
+        return lcsr_indic(srcw,tgtw,slang,tlang)
+
+#def orthographic_similarity(src_fname,tgt_fname,out_fname,src_lang,tgt_lang):
+#
+#    total=0.0
+#    n=0.0
+#    with codecs.open(out_fname,'w','utf-8') as out_file: 
+#        for sline, tline in read_parallel_corpus(src_fname,tgt_fname):           
+#            score,sl,tl=lcsr(sline,tline,src_lang,tgt_lang)
+#            total+=score
+#            n+=1.0
+#
+#            out_file.write(u'{}|{}|{}\n'.format(score,sl,tl))
+#
+#        print '{}-{}" {}'.format(src,tgt,total/n)
+
+def orthographic_similarity(src_fname,tgt_fname,src_lang,tgt_lang):
+
+    total=0.0
+    n=0.0
+
+    for sline, tline in read_parallel_corpus(src_fname,tgt_fname):           
+        score,sl,tl=lcsr(sline,tline,src_lang,tgt_lang)
+        total+=score
+        n+=1.0
+
+    print '{}-{} {}'.format(src_lang,tgt_lang,total/n)
+
+def extract_common_corpus_wikidata(data_dir, p_lang, c0_lang, c1_lang, outdir): 
+
+    data_cache=defaultdict(lambda : [set(),set()])
+
+    # read corpus 0
+    with codecs.open('{}/{}-{}.txt'.format(data_dir,p_lang,c0_lang),'r','utf-8') as c_file: 
+        for line in c_file: 
+            en_l, c_l = line.strip().split(u'|')
+            data_cache[en_l][0].add(c_l)
+
+    # read corpus 1                
+    with codecs.open('{}/{}-{}.txt'.format(data_dir,p_lang,c1_lang),'r','utf-8') as c_file: 
+        for line in c_file: 
+            en_l, c_l = line.strip().split(u'|')
+            data_cache[en_l][1].add(c_l)
+
+
+    # write the common data
+
+    # from language c0 to c1
+    with codecs.open(outdir+'/train.{}'.format(c0_lang),'w','utf-8') as c0_outfname, \
+         codecs.open(outdir+'/train.{}'.format(c1_lang),'w','utf-8') as c1_outfname:
+        parallel_list=[]
+        for en_l, other_l_lists in data_cache.iteritems(): 
+            if len(other_l_lists[0]) >0 and len(other_l_lists[1]) >0 : 
+                for c0_str in  other_l_lists[0] :  
+                    for c1_str in  other_l_lists[1] :  
+                        #if len(c0_str_w)>3:
+                        c0_outfname.write(c0_str+u'\n')
+                        c1_outfname.write(c1_str+u'\n')
+
+def remove_terminal_halant(infname,outfname,lang): 
+    """
+    input and output are moses format files 
+    """
+
+    def process(w): 
+        return w[:-1] if isc.is_halant(isc.get_phonetic_feature_vector(w[-1],lang)) else w
+
+    with codecs.open(outfname,'w','utf-8') as outfile:
+        for (sent_no, parsed_bridge_lines) in iterate_nbest_list(infname):     
+            for parsed_bridge_line in parsed_bridge_lines:
+                parsed_bridge_line[1] = process(parsed_bridge_line[1])
+                outfile.write( u'{} ||| {} ||| {} ||| {}\n'.format( *parsed_bridge_line ) )  
+
+
+
 if __name__=='__main__': 
+
+    loader.load()
 
     commands = {
             'convert_output_format': convert_output_format,
+
             'transfer_pivot_translate': transfer_pivot_translate,
             'compute_accuracy': compute_accuracy,
             'compute_accuracy_multilingual': compute_accuracy_multilingual,
             'read_best_epoch': read_best_epoch,
             'early_stop_best': early_stop_best_str,
+
             'shuffle': shuffle,
+
             'find_best_lm_weight': find_best_lm_weight,
+
+            'orthographic_similarity': orthographic_similarity,
+            'extract_common_corpus_wikidata': extract_common_corpus_wikidata,
+
+            'remove_terminal_halant': remove_terminal_halant,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])

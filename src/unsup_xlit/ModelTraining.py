@@ -271,11 +271,12 @@ if __name__ == '__main__' :
 
     test_langs=parallel_train_langs 
 
-    print 'Parallel Train, Parallel Valid, Test Langs, All Langs'
+    print 'Parallel Train, Parallel Valid, Test Langs, All Langs, Unseen Langs'
     print parallel_train_langs
     print parallel_valid_langs
     print test_langs
     print all_langs 
+    print unseen_langs
 
     ## restart from this iteration number
     start_from = args.start_from
