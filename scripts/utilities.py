@@ -385,7 +385,55 @@ def remove_terminal_halant(infname,outfname,lang):
                 parsed_bridge_line[1] = process(parsed_bridge_line[1])
                 outfile.write( u'{} ||| {} ||| {} ||| {}\n'.format( *parsed_bridge_line ) )  
 
+def simple_ensemble(res1_fname,res2_fname,res_ens_fname): 
+    """
+        Ensemble the results from two systems, by just averaging the scores from the two systems
+    """
 
+    with codecs.open(res_ens_fname,'w','utf-8') as res_ens_file: 
+        for ( (r1_sentno, r1_cand), (r2_sentno, r2_cand) ) in \
+                it.izip( iterate_nbest_list(res1_fname), iterate_nbest_list(res2_fname) ): 
+            
+            #final_cands=set()                
+            #final_cands.update([ x[1] for x in r1_cand ])
+            #final_cands.update([ x[1] for x in r2_cand ]) 
+
+            #for final_cand in final_cands: 
+            #    res_ens_file.write( u'{} ||| {} ||| {} ||| {}\n'.format( r1_sentno, final_cand, -1.0, -1.0 ) )  
+
+            def make_unique_cands(cand_list): 
+                """
+                just consider the first candidate in each list of the ensemble 
+                """
+                unique_cand_list = []
+                for x in cand_list: 
+                    if x[1] not in [ y[0] for y in unique_cand_list ]: 
+                        unique_cand_list.append((x[1],x[3]))
+                return unique_cand_list  
+
+            r1_unique_cand = make_unique_cands(r1_cand)
+            r2_unique_cand = make_unique_cands(r2_cand)
+
+            final_cands=defaultdict(list)
+
+            for x in r1_unique_cand: 
+                final_cands[x[0]].append(x[1])
+            for x in r2_unique_cand: 
+                final_cands[x[0]].append(x[1])
+
+            ## average scores 
+            sorted_scores=[]
+            for cand,score_list in final_cands.iteritems(): 
+                #sorted_scores.append( (cand,sum(score_list)/len(score_list)) )
+                sorted_scores.append( (cand,sum(score_list)/2.0) )
+        
+            ## sort by score 
+            sorted_scores.sort(key=lambda x:x[1],reverse=True)                
+
+            ## write output score
+            for cand,score in sorted_scores: 
+                #print score
+                res_ens_file.write( u'{} ||| {} ||| {} ||| {}\n'.format( r1_sentno, cand, -1.0, score ) )  
 
 if __name__=='__main__': 
 
@@ -408,6 +456,8 @@ if __name__=='__main__':
             'extract_common_corpus_wikidata': extract_common_corpus_wikidata,
 
             'remove_terminal_halant': remove_terminal_halant,
+
+            'simple_ensemble': simple_ensemble
     }
 
     commands[sys.argv[1]](*sys.argv[2:])

@@ -12,178 +12,178 @@ export CUDA_VISIBLE_DEVICES=0
 ################################ supervised transliteration - multilingual #########################
 ####################################################################################################
 
-dataset='news_2015_official'
-data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-
-restore_epoch_number="32"
-
-## Backward compatibility flags
-#export NO_OUTEMBED=1
-#export ALWAYS_LANG_TOKEN=1
-
-for expname in `echo 2_multilingual_again`
-do 
-
-    ######## Experiment loop starts here ########
-
-    #for representation in `echo onehot phonetic`
-    for representation in `echo onehot_shared`
-    do 
-
-        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
-        then 
-            # for EN-INDIC
-
-            ##### normal run
-            src_lang='en'
-            tgt_langs=(hi bn kn ta)
-            lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
-            representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ###### for 2 lang training 
-            #src_lang='en'
-            #tgt_langs=(bn kn)
-            #all_langs=(hi bn kn ta)
-            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
-            #more_opts="${more_opts} --unseen_langs hi,ta"
-            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ##### for 3 lang training 
-            #src_lang='en'
-            #tgt_langs=(bn kn hi)
-            #all_langs=(hi bn kn ta)
-            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
-            #more_opts="${more_opts} --unseen_langs ta"
-            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-            
-            #### for zeroshot training
-            #src_lang='en'
-            #tgt_langs=(bn kn ta)
-            #all_langs=(hi bn kn ta)
-            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
-            #more_opts="${more_opts} --unseen_langs hi"
-            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ## common  block
-            multiconf='multi-conf'
-            rep_str="$src_lang:onehot,$representations_param"
-
-        elif [ $dataset = 'news_2015_reversed' -o $dataset = 'news_2015_reversed_match' ]
-        then 
-            ## for INDIC-EN
-            more_opts=""
-
-            #### normal run
-            tgt_lang='en'
-            src_langs=(hi bn kn ta)
-            lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-en," ; done | sed 's/,$//g'`
-            representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ##### for zeroshot training
-            #tgt_lang='en'
-            #src_langs=(bn kn ta)
-            #all_langs=(hi bn kn ta)
-            #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-$tgt_lang," ; done | sed 's/,$//g'`
-            #more_opts="${more_opts} --unseen_langs hi"
-            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ## common  block
-            multiconf='multi-conf'
-            rep_str="$tgt_lang:onehot,$representations_param"
-
-        elif [ $dataset = 'news_2015_indic' ]
-        then
-            ## for INDIC-INDIC 
-
-            ## all pairs 
-            #lang_pairs="bn-hi,bn-kn,bn-ta,hi-bn,hi-kn,hi-ta,kn-bn,kn-hi,kn-ta,ta-bn,ta-hi,ta-kn"
-        
-            #some language pairs: then separate run for zeroshot is not required 
-            lang_pairs="bn-hi,bn-kn,hi-bn,hi-ta,kn-bn,kn-ta,ta-hi,ta-kn"
-
-            ## common block 
-            multiconf='multi-conf'
-            rep_str="$representation"
-            if [ $representation = 'phonetic' ]
-            then 
-                more_opts="--separate_output_embedding"
-            fi 
-
-        elif [ $dataset = 'ar-slavic_latin' ]
-        then 
-            # for AR-SLAVIC_LATIN
-
-            ##### normal run
-            #src_lang='ar'
-            #tgt_langs=(cs pl sl sk)
-            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
-            #representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            #### for zeroshot training
-            src_lang='ar'
-            tgt_langs=(pl sl sk)
-            all_langs=(cs pl sl sk)
-            lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
-            more_opts="${more_opts} --unseen_langs cs"
-            representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ## common  block
-            multiconf='multi-conf'
-            rep_str="$src_lang:onehot,$representations_param"
-            more_opts="${more_opts} --shared_mapping_class CharacterMapping"
-
-        elif [ $dataset = 'slavic_latin-ar' ]
-        then 
-            # for SLAVIC_LATIN-AR
-            more_opts=""
-
-            #### normal run
-            tgt_lang='ar'
-            src_langs=(cs pl sl sk)
-            lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-$tgt_lang," ; done | sed 's/,$//g'`
-            representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ##### for zeroshot training
-            #tgt_lang='ar'
-            #src_langs=(pl sl sk)
-            #all_langs=(cs pl sl sk)
-            #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-$tgt_lang," ; done | sed 's/,$//g'`
-            #more_opts="${more_opts} --unseen_langs cs"
-            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
-
-            ## common  block
-            multiconf='multi-conf'
-            rep_str="$tgt_lang:onehot,$representations_param"
-            more_opts="${more_opts} --shared_mapping_class CharacterMapping"
-        else
-            echo 'Invalid dataset' 
-            exit 1
-        fi 
-
-        o=$output_dir/$expname/$representation/$multiconf
-        
-        echo 'Start: ' $dataset $expname $multiconf $representation 
-    
-        ##### Training and Testing 
-        #rm -rf $o
-        #mkdir -p $o
-
-        python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
-            --lang_pairs "$lang_pairs" \
-            --data_dir  $data_dir/$multiconf \
-            --output_dir  $o \
-            --representation "$rep_str" \
-            --max_epochs 40 \
-            --start_from $restore_epoch_number \
-             $more_opts >> $o/train.log 2>&1 
-    
-            #--start_from $restore_epoch_number \
-        echo 'End: ' $dataset $expname $multiconf $representation 
-    
-    done 
-
-done 
+#dataset='news_2015_official'
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+#
+#restore_epoch_number="32"
+#
+### Backward compatibility flags
+##export NO_OUTEMBED=1
+##export ALWAYS_LANG_TOKEN=1
+#
+#for expname in `echo 2_multilingual_again`
+#do 
+#
+#    ######## Experiment loop starts here ########
+#
+#    #for representation in `echo onehot phonetic`
+#    for representation in `echo onehot_shared`
+#    do 
+#
+#        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
+#        then 
+#            # for EN-INDIC
+#
+#            ##### normal run
+#            src_lang='en'
+#            tgt_langs=(hi bn kn ta)
+#            lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "en-$x," ; done | sed 's/,$//g'`
+#            representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ###### for 2 lang training 
+#            #src_lang='en'
+#            #tgt_langs=(bn kn)
+#            #all_langs=(hi bn kn ta)
+#            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
+#            #more_opts="${more_opts} --unseen_langs hi,ta"
+#            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ##### for 3 lang training 
+#            #src_lang='en'
+#            #tgt_langs=(bn kn hi)
+#            #all_langs=(hi bn kn ta)
+#            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
+#            #more_opts="${more_opts} --unseen_langs ta"
+#            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#            
+#            #### for zeroshot training
+#            #src_lang='en'
+#            #tgt_langs=(bn kn ta)
+#            #all_langs=(hi bn kn ta)
+#            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
+#            #more_opts="${more_opts} --unseen_langs hi"
+#            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ## common  block
+#            multiconf='multi-conf'
+#            rep_str="$src_lang:onehot,$representations_param"
+#
+#        elif [ $dataset = 'news_2015_reversed' -o $dataset = 'news_2015_reversed_match' ]
+#        then 
+#            ## for INDIC-EN
+#            more_opts=""
+#
+#            #### normal run
+#            tgt_lang='en'
+#            src_langs=(hi bn kn ta)
+#            lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-en," ; done | sed 's/,$//g'`
+#            representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ##### for zeroshot training
+#            #tgt_lang='en'
+#            #src_langs=(bn kn ta)
+#            #all_langs=(hi bn kn ta)
+#            #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-$tgt_lang," ; done | sed 's/,$//g'`
+#            #more_opts="${more_opts} --unseen_langs hi"
+#            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ## common  block
+#            multiconf='multi-conf'
+#            rep_str="$tgt_lang:onehot,$representations_param"
+#
+#        elif [ $dataset = 'news_2015_indic' ]
+#        then
+#            ## for INDIC-INDIC 
+#
+#            ## all pairs 
+#            #lang_pairs="bn-hi,bn-kn,bn-ta,hi-bn,hi-kn,hi-ta,kn-bn,kn-hi,kn-ta,ta-bn,ta-hi,ta-kn"
+#        
+#            #some language pairs: then separate run for zeroshot is not required 
+#            lang_pairs="bn-hi,bn-kn,hi-bn,hi-ta,kn-bn,kn-ta,ta-hi,ta-kn"
+#
+#            ## common block 
+#            multiconf='multi-conf'
+#            rep_str="$representation"
+#            if [ $representation = 'phonetic' ]
+#            then 
+#                more_opts="--separate_output_embedding"
+#            fi 
+#
+#        elif [ $dataset = 'ar-slavic_latin' ]
+#        then 
+#            # for AR-SLAVIC_LATIN
+#
+#            ##### normal run
+#            #src_lang='ar'
+#            #tgt_langs=(cs pl sl sk)
+#            #lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
+#            #representations_param=`for x in ${tgt_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            #### for zeroshot training
+#            src_lang='ar'
+#            tgt_langs=(pl sl sk)
+#            all_langs=(cs pl sl sk)
+#            lang_pairs=`for x in ${tgt_langs[*]}; do echo -n  "$src_lang-$x," ; done | sed 's/,$//g'`
+#            more_opts="${more_opts} --unseen_langs cs"
+#            representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ## common  block
+#            multiconf='multi-conf'
+#            rep_str="$src_lang:onehot,$representations_param"
+#            more_opts="${more_opts} --shared_mapping_class CharacterMapping"
+#
+#        elif [ $dataset = 'slavic_latin-ar' ]
+#        then 
+#            # for SLAVIC_LATIN-AR
+#            more_opts=""
+#
+#            #### normal run
+#            tgt_lang='ar'
+#            src_langs=(cs pl sl sk)
+#            lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-$tgt_lang," ; done | sed 's/,$//g'`
+#            representations_param=`for x in ${src_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ##### for zeroshot training
+#            #tgt_lang='ar'
+#            #src_langs=(pl sl sk)
+#            #all_langs=(cs pl sl sk)
+#            #lang_pairs=`for x in ${src_langs[*]}; do echo -n  "$x-$tgt_lang," ; done | sed 's/,$//g'`
+#            #more_opts="${more_opts} --unseen_langs cs"
+#            #representations_param=`for x in ${all_langs[*]}; do echo -n  "$x:$representation," ; done | sed 's/,$//g'`
+#
+#            ## common  block
+#            multiconf='multi-conf'
+#            rep_str="$tgt_lang:onehot,$representations_param"
+#            more_opts="${more_opts} --shared_mapping_class CharacterMapping"
+#        else
+#            echo 'Invalid dataset' 
+#            exit 1
+#        fi 
+#
+#        o=$output_dir/$expname/$representation/$multiconf
+#        
+#        echo 'Start: ' $dataset $expname $multiconf $representation 
+#    
+#        ##### Training and Testing 
+#        #rm -rf $o
+#        #mkdir -p $o
+#
+#        python $MLXLIT_HOME/src/unsup_xlit/ModelTraining.py \
+#            --lang_pairs "$lang_pairs" \
+#            --data_dir  $data_dir/$multiconf \
+#            --output_dir  $o \
+#            --representation "$rep_str" \
+#            --max_epochs 40 \
+#            --start_from $restore_epoch_number \
+#             $more_opts >> $o/train.log 2>&1 
+#    
+#            #--start_from $restore_epoch_number \
+#        echo 'End: ' $dataset $expname $multiconf $representation 
+#    
+#    done 
+#
+#done 
 
 ##############################################################################################
 ######################### supervised transliteration - bilingual  ############################
@@ -509,104 +509,151 @@ done
 #############################################################################################
 
 ########## for multilingual zeroshot training  (en-indic) with hindi as the missing language
-#dataset='news_2015_official'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
-#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-#
-#while read e_r_l_p_v
-#do 
-#        expname=`echo "$e_r_l_p_v" | cut -f 1 -d '|'`
-#        representation=`echo "$e_r_l_p_v" | cut -f 2 -d '|'`
-#        langpair=`echo "$e_r_l_p_v" | cut -f 3 -d '|'`
-#        prefix=`echo "$e_r_l_p_v" | cut -f 4 -d '|'`
-#        loss=`echo "$e_r_l_p_v" | cut -f 5 -d '|'`
-#
-#        src_lang=`echo $langpair | cut -f 1 -d '-'`
-#        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-#
-#        prefix1=`echo $prefix | sed 's,^0\+,,g'`
-#
-#        echo $e_r_l_p_v
-#        echo 
-#
-#        #### output directory to select 
-#        
-#        ## bilingual
-#        o=$output_dir/$expname/$representation/$langpair
-#
-#        ## multilingual 
-#        #o=$output_dir/$expname/$representation/multi-conf
-#
-#        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
-#        then 
-#            ### for multilingual experiments  (en-indic)
-#            #rep_str="en:onehot,$tgt_lang:$representation,bn:$representation,ta:$representation,kn:$representation"
-#            rep_str="en:onehot,$tgt_lang:$representation"
-#        elif [ $dataset = 'news_2015_reversed' ]
-#        then 
-#            ### for multilingual experiments  (indic-en)
-#            rep_str="en:onehot,$src_lang:$representation"
-#        elif [ $dataset = 'news_2015_indic' ]
-#        then 
-#            ##### for multilingual experiments  (indic-indic)
-#            rep_str="$tgt_lang:$representation,$src_lang:$representation"
-#            if [ $representation = 'phonetic' ]
-#            then 
-#                more_opts="--separate_output_embedding"
-#            fi 
-#        elif [ $dataset = 'ar-slavic_latin' ]
-#        then 
-#            #  for multilingual experiments (AR-SLAVIC_LATIN)
-#            rep_str="ar:onehot,$tgt_lang:$representation"
-#            more_opts="--shared_mapping_class CharacterMapping"
-#
-#        elif [ $dataset = 'slavic_latin-ar' ]
-#        then 
-#            # for multilingual experiments (SLAVIC_LATIN-AR)
-#            rep_str="ar:onehot,$src_lang:$representation"
-#            more_opts="--shared_mapping_class CharacterMapping"
-#        else
-#            echo 'Invalid dataset'
-#            exit 1
-#        fi 
-#
-#        echo 'Start: ' $dataset $expname $langpair $representation 
-#
-#        python $MLXLIT_HOME/src/unsup_xlit/encoder_analysis.py \
-#                --lang $src_lang \
-#                --representation "$rep_str" \
-#                --model_fname "$o/temp_models/my_model-$prefix1"  \
-#                --mapping_dir "$o/mappings" \
-#                --window_size 1 \
-#                --in_fname $data_dir/$langpair/test.$src_lang \
-#                --out_img_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.png \
-#                --out_html_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.html
-#
-#        echo 'End: ' $dataset $expname $langpair $representation 
-#
-#done  <<CONFIG
-#CONFIG
+dataset='news_2015_official'
+data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
+output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+
+### Backward compatibility flags
+#export NO_OUTEMBED=1
+
+while read e_r_l_p_v
+do 
+        expname=`echo "$e_r_l_p_v" | cut -f 1 -d '|'`
+        representation=`echo "$e_r_l_p_v" | cut -f 2 -d '|'`
+        langpair=`echo "$e_r_l_p_v" | cut -f 3 -d '|'`
+        prefix=`echo "$e_r_l_p_v" | cut -f 4 -d '|'`
+        loss=`echo "$e_r_l_p_v" | cut -f 5 -d '|'`
+
+        src_lang=`echo $langpair | cut -f 1 -d '-'`
+        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+
+        prefix1=`echo $prefix | sed 's,^0\+,,g'`
+
+        echo $e_r_l_p_v
+        echo 
+
+        #### output directory to select 
+        
+        ### bilingual
+        o=$output_dir/$expname/$representation/$langpair
+
+        ## multilingual 
+        #o=$output_dir/$expname/$representation/multi-conf
+
+        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
+        then 
+            ### for multilingual experiments  (en-indic)
+            #rep_str="en:onehot,$tgt_lang:$representation,bn:$representation,ta:$representation,kn:$representation"
+            rep_str="en:onehot,$tgt_lang:$representation"
+        elif [ $dataset = 'news_2015_reversed' ]
+        then 
+            ### for multilingual experiments  (indic-en)
+            rep_str="en:onehot,$src_lang:$representation"
+        elif [ $dataset = 'news_2015_indic' ]
+        then 
+            ##### for multilingual experiments  (indic-indic)
+            rep_str="$tgt_lang:$representation,$src_lang:$representation"
+            if [ $representation = 'phonetic' ]
+            then 
+                more_opts="--separate_output_embedding"
+            fi 
+        elif [ $dataset = 'ar-slavic_latin' ]
+        then 
+            #  for multilingual experiments (AR-SLAVIC_LATIN)
+            rep_str="ar:onehot,$tgt_lang:$representation"
+            more_opts="--shared_mapping_class CharacterMapping"
+
+        elif [ $dataset = 'slavic_latin-ar' ]
+        then 
+            # for multilingual experiments (SLAVIC_LATIN-AR)
+            rep_str="ar:onehot,$src_lang:$representation"
+            more_opts="--shared_mapping_class CharacterMapping"
+        else
+            echo 'Invalid dataset'
+            exit 1
+        fi 
+
+        echo 'Start: ' $dataset $expname $langpair $representation 
+
+        python $MLXLIT_HOME/src/unsup_xlit/encoder_analysis.py \
+                --lang $src_lang \
+                --representation "$rep_str" \
+                --model_fname "$o/temp_models/my_model-$prefix1"  \
+                --mapping_dir "$o/mappings" \
+                --window_size 1 \
+                $more_opts \
+                --in_fname $data_dir/$langpair/test.$src_lang \
+                --out_img_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.png \
+                --out_html_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.html
+
+        echo 'End: ' $dataset $expname $langpair $representation 
+
+done  <<CONFIG
+2_bilingual|onehot|en-hi|026|0.641
+2_bilingual|onehot|en-bn|021|0.417
+2_bilingual|onehot|en-ta|038|0.578
+2_bilingual|onehot|en-kn|025|0.52
+CONFIG
 
 #2_bilingual|onehot|en-hi|026|0.641
 #2_bilingual|onehot|en-bn|021|0.417
 #2_bilingual|onehot|en-ta|038|0.578
 #2_bilingual|onehot|en-kn|025|0.52
 
-#2_multilingual|onehot_shared|en-hi|023|0.607
-#2_multilingual|onehot_shared|en-bn|022|0.461
-#2_multilingual|onehot_shared|en-ta|026|0.553
-#2_multilingual|onehot_shared|en-kn|040|0.539
-
 #2_bilingual|onehot|hi-en|022|0.382591
 #2_bilingual|onehot|bn-en|032|0.48934
 #2_bilingual|onehot|ta-en|023|0.232232
 #2_bilingual|onehot|kn-en|036|0.337675
 
+#2_bilingual|onehot|ar-cs|011|-1
+#2_bilingual|onehot|ar-pl|012|-1
+#2_bilingual|onehot|ar-sk|08|-1
+#2_bilingual|onehot|ar-sl|012|-1
+
+#2_bilingual|onehot|cs-ar|013|-1
+#2_bilingual|onehot|pl-ar|07|-1
+#2_bilingual|onehot|sk-ar|010|-1
+#2_bilingual|onehot|sl-ar|09|-1
+
+#2_bilingual|onehot|bn-hi|09|-1
+#2_bilingual|onehot|bn-kn|011|-1
+#2_bilingual|onehot|hi-bn|031|-1
+#2_bilingual|onehot|hi-ta|012|-1
+#2_bilingual|onehot|kn-bn|033|-1
+#2_bilingual|onehot|kn-ta|07|-1
+#2_bilingual|onehot|ta-hi|016|-1
+#2_bilingual|onehot|ta-kn|018|-1
+
+
+
+#2_multilingual|onehot_shared|en-hi|023|0.607
+#2_multilingual|onehot_shared|en-bn|022|0.461
+#2_multilingual|onehot_shared|en-ta|026|0.553
+#2_multilingual|onehot_shared|en-kn|040|0.539
 
 #2_multilingual|onehot_shared|hi-en|037|0.511134
 #2_multilingual|onehot_shared|bn-en|022|0.540102
 #2_multilingual|onehot_shared|ta-en|031|0.259259
 #2_multilingual|onehot_shared|kn-en|022|0.476954
+
+#2_multilingual|onehot_shared|ar-cs|038|-1
+#2_multilingual|onehot_shared|ar-pl|035|-1
+#2_multilingual|onehot_shared|ar-sk|031|-1
+#2_multilingual|onehot_shared|ar-sl|037|-1
+
+#2_multilingual|onehot_shared|cs-ar|031|-1
+#2_multilingual|onehot_shared|pl-ar|034|-1
+#2_multilingual|onehot_shared|sk-ar|029|-1
+#2_multilingual|onehot_shared|sl-ar|035|-1
+
+#2_multilingual|onehot_shared|bn-hi|010|-1
+#2_multilingual|onehot_shared|bn-kn|016|-1
+#2_multilingual|onehot_shared|hi-bn|040|-1
+#2_multilingual|onehot_shared|hi-ta|022|-1
+#2_multilingual|onehot_shared|kn-bn|040|-1
+#2_multilingual|onehot_shared|kn-ta|08|-1
+#2_multilingual|onehot_shared|ta-hi|026|-1
+#2_multilingual|onehot_shared|ta|kn|039|-1
 
 ##########################################################
 ################ LANGUAGE MODELLING #####################
@@ -930,3 +977,28 @@ done
 #        $o
 #
 #done 
+
+
+#dataset='news_2015_indic'
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+#
+#src_lang='bn'
+#tgt_lang='hi'
+#langpair=$src_lang-$tgt_lang
+#
+## generate NEWS 2015 evaluation format output file 
+#python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+#        "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.id" \
+#        "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
+#        "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
+#        "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+#        "system" "conll2016" "$src_lang" "$tgt_lang"  
+#
+## run evaluation 
+#python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+#        -t "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
+#        -i "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+#        -o "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
+#         > "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
+#
+##python utilities.py simple_ensemble /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/multi-conf/outputs/010test.nbest.bn-hi.hi /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/phonetic/multi-conf/outputs/015test.nbest.bn-hi.hi test.nbest.bn-hi.hi 

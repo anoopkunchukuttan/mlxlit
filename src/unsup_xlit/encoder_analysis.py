@@ -71,6 +71,7 @@ def input_chars_to_analyze():
     """
     Input in code: what characters to input 
     """
+    chars_to_analyze = []
     if FLAGS.lang == 'en': 
         chars_to_analyze=['A','E','I','O','U']
     elif isc.is_supported_language(FLAGS.lang): 
