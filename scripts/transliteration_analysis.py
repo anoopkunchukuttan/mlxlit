@@ -106,7 +106,6 @@ def transliteration_analysis(exp_dirname,epoch,ref_fname,slang,tlang):
 
 def transliteration_comparison(exp_dirname1,epoch1,
                 exp_dirname2,epoch2,
-                ref_fname,
                 slang,tlang,
                 out_fname):
 
@@ -194,16 +193,12 @@ def run_comparison_bi_multi(basedir,exp_conf_fname,out_dirname):
             bi_dirname = '{basedir}/results/sup/{dataset}/2_bilingual/onehot/{edir}'.format(
                     basedir=basedir,dataset=dataset,edir=get_edir(bi_rec))
 
-            ref_fname = '{basedir}/data/sup/mosesformat/{dataset}/{slang}-{tlang}/test.{tlang}'.format(
-                basedir=basedir,dataset=dataset,slang=slang,tlang=tlang)
-
             out_fname = '{}/{}-{}-{}.png'.format(out_dirname,dataset,slang,tlang)
 
             print 'Starting: {} {} {}'.format(dataset,slang,tlang)
 
             transliteration_comparison(multi_dirname,multi_rec['epoch'],
                 bi_dirname,bi_rec['epoch'],
-                ref_fname,
                 slang,tlang,
                 out_fname)
 
@@ -600,9 +595,9 @@ if __name__ == '__main__':
     ## command to generate the analysis files for each experiment 
     #run_generate_analysis(basedir,exp_list) 
 
-    ## command to compare bilingual and multilingual experiments 
-    ## mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
-    #run_comparison_bi_multi(basedir,exp_list,'{}/analysis/bi_vs_multi/heat_maps'.format(basedir)) 
+    # command to compare bilingual and multilingual experiments 
+    # mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
+    run_comparison_bi_multi(basedir,exp_list,'{}/analysis/bi_vs_multi/heat_maps'.format(basedir)) 
 
 
     ## command to compare bilingual and multilingual experiments 
@@ -633,10 +628,10 @@ if __name__ == '__main__':
     #aug_exp_list='results_with_accuracy_5.csv'
     #run_err_dist(basedir,exp_list,aug_exp_list)
 
-    #### sort errors 
-    print 'Sorting transliteration errors'
-    exp_list='results_with_accuracy_5.csv'
-    run_sort_errors(basedir,exp_list)
+    ##### sort errors 
+    #print 'Sorting transliteration errors'
+    #exp_list='results_with_accuracy_5.csv'
+    #run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
