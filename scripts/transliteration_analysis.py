@@ -568,11 +568,26 @@ def run_sort_errors(basedir,exp_conf_fname):
                 err_df['roman_out']=err_df.apply(lambda x:(indtrans.ItransTransliterator.to_itrans(x['out_char'],tlang)), axis=1)
                 err_df['unicode_ref']=err_df.apply(lambda x:('{:2x}'.format(isc.get_offset(x['ref_char'] ,tlang) )), axis=1)
                 err_df['unicode_out']=err_df.apply(lambda x:('{:2x}'.format(isc.get_offset(x['out_char'] ,tlang) )), axis=1)
-            err_df['charcat_ref']=err_df.apply(lambda x: align.cci.get_char_type(x['ref_char'],tlang) , axis=1)
-            err_df['charcat_out']=err_df.apply(lambda x: align.cci.get_char_type(x['out_char'],tlang) , axis=1)
+            if tlang == 'ar':
+                err_df['roman_ref']=err_df.apply(lambda x:(a2r_xlit.transliterate(x['ref_char'])), axis=1)
+                err_df['roman_out']=err_df.apply(lambda x:(a2r_xlit.transliterate(x['out_char'])), axis=1)
+                err_df['unicode_ref']=err_df.apply(lambda x:('{:4x}'.format(ord(x['ref_char']))), axis=1)
+                err_df['unicode_out']=err_df.apply(lambda x:('{:4x}'.format(ord(x['out_char']))), axis=1)
+            if align.cci.is_supported_language(tlang):                    
+                err_df['charcat_ref']=err_df.apply(lambda x: align.cci.get_char_type(x['ref_char'],tlang) , axis=1)
+                err_df['charcat_out']=err_df.apply(lambda x: align.cci.get_char_type(x['out_char'],tlang) , axis=1)
 
             err_df.sort_values(by='count',axis=0,ascending=False,inplace=True)
             err_df.to_csv('{}/err_count.csv'.format(out_dirname),encoding='utf-8')
+        else: 
+            print 'WARNING (run_sort_errors): Could not analyze following experiment: {} {} {} {} {} epoch: {}'.format(
+                    rec['dataset'],
+                    rec['exp'],
+                    rec['representation'],
+                    slang,
+                    tlang,
+                    epoch
+                    )
         print 'End Experiment: ' + exp_dirname
     
 if __name__ == '__main__': 
@@ -594,33 +609,34 @@ if __name__ == '__main__':
     ## /home/development/anoop/experiments/multilingual_unsup_xlit/analysis/onehot_vs_phonetic/heat_maps/
     #run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
 
-    ## get transliteration metrics 
-    print 'Getting various metrics'
-    exp_list='results_with_accuracy.csv'
-    aug_exp_list='results_with_accuracy_2.csv'
-    run_gather_metrics(basedir,exp_list,aug_exp_list)
+    ### get transliteration metrics 
+    #print 'Getting various metrics'
+    #exp_list='results_with_accuracy.csv'
+    #aug_exp_list='results_with_accuracy_2.csv'
+    #run_gather_metrics(basedir,exp_list,aug_exp_list)
 
-    ## get language independent error rates 
-    print 'Getting language independent error rates'
-    exp_list='results_with_accuracy_2.csv'
-    aug_exp_list='results_with_accuracy_3.csv'
-    run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
+    ### get language independent error rates 
+    #print 'Getting language independent error rates'
+    #exp_list='results_with_accuracy_2.csv'
+    #aug_exp_list='results_with_accuracy_3.csv'
+    #run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
 
-    ## get language dependent error rates 
-    print 'Getting language dependent error rates'
-    exp_list='results_with_accuracy_3.csv'
-    aug_exp_list='results_with_accuracy_4.csv'
-    run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
+    ### get language dependent error rates 
+    #print 'Getting language dependent error rates'
+    #exp_list='results_with_accuracy_3.csv'
+    #aug_exp_list='results_with_accuracy_4.csv'
+    #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
-    ### get error distribution based on vowel, consonants, others 
-    print 'Getting error counts'
-    exp_list='results_with_accuracy_4.csv'
-    aug_exp_list='results_with_accuracy_5.csv'
-    run_err_dist(basedir,exp_list,aug_exp_list)
+    #### get error distribution based on vowel, consonants, others 
+    #print 'Getting error counts'
+    #exp_list='results_with_accuracy_4.csv'
+    #aug_exp_list='results_with_accuracy_5.csv'
+    #run_err_dist(basedir,exp_list,aug_exp_list)
 
     #### sort errors 
-    #print 'Sorting transliteration errors'
-    #run_sort_errors(basedir,exp_list)
+    print 'Sorting transliteration errors'
+    exp_list='results_with_accuracy_5.csv'
+    run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(
     #        '/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/indic-indic',
