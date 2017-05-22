@@ -504,96 +504,96 @@ export CUDA_VISIBLE_DEVICES=0
 
 
 
-#############################################################################################
-############################################  VISUALIZATION #################################
-#############################################################################################
-
-########## for multilingual zeroshot training  (en-indic) with hindi as the missing language
-dataset='news_2015_official'
-data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
-output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
-
-### Backward compatibility flags
-#export NO_OUTEMBED=1
-
-while read e_r_l_p_v
-do 
-        expname=`echo "$e_r_l_p_v" | cut -f 1 -d '|'`
-        representation=`echo "$e_r_l_p_v" | cut -f 2 -d '|'`
-        langpair=`echo "$e_r_l_p_v" | cut -f 3 -d '|'`
-        prefix=`echo "$e_r_l_p_v" | cut -f 4 -d '|'`
-        loss=`echo "$e_r_l_p_v" | cut -f 5 -d '|'`
-
-        src_lang=`echo $langpair | cut -f 1 -d '-'`
-        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
-
-        prefix1=`echo $prefix | sed 's,^0\+,,g'`
-
-        echo $e_r_l_p_v
-        echo 
-
-        #### output directory to select 
-        
-        ### bilingual
-        o=$output_dir/$expname/$representation/$langpair
-
-        ## multilingual 
-        #o=$output_dir/$expname/$representation/multi-conf
-
-        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
-        then 
-            ### for multilingual experiments  (en-indic)
-            #rep_str="en:onehot,$tgt_lang:$representation,bn:$representation,ta:$representation,kn:$representation"
-            rep_str="en:onehot,$tgt_lang:$representation"
-        elif [ $dataset = 'news_2015_reversed' ]
-        then 
-            ### for multilingual experiments  (indic-en)
-            rep_str="en:onehot,$src_lang:$representation"
-        elif [ $dataset = 'news_2015_indic' ]
-        then 
-            ##### for multilingual experiments  (indic-indic)
-            rep_str="$tgt_lang:$representation,$src_lang:$representation"
-            if [ $representation = 'phonetic' ]
-            then 
-                more_opts="--separate_output_embedding"
-            fi 
-        elif [ $dataset = 'ar-slavic_latin' ]
-        then 
-            #  for multilingual experiments (AR-SLAVIC_LATIN)
-            rep_str="ar:onehot,$tgt_lang:$representation"
-            more_opts="--shared_mapping_class CharacterMapping"
-
-        elif [ $dataset = 'slavic_latin-ar' ]
-        then 
-            # for multilingual experiments (SLAVIC_LATIN-AR)
-            rep_str="ar:onehot,$src_lang:$representation"
-            more_opts="--shared_mapping_class CharacterMapping"
-        else
-            echo 'Invalid dataset'
-            exit 1
-        fi 
-
-        echo 'Start: ' $dataset $expname $langpair $representation 
-
-        python $MLXLIT_HOME/src/unsup_xlit/encoder_analysis.py \
-                --lang $src_lang \
-                --representation "$rep_str" \
-                --model_fname "$o/temp_models/my_model-$prefix1"  \
-                --mapping_dir "$o/mappings" \
-                --window_size 1 \
-                $more_opts \
-                --in_fname $data_dir/$langpair/test.$src_lang \
-                --out_img_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.png \
-                --out_html_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.html
-
-        echo 'End: ' $dataset $expname $langpair $representation 
-
-done  <<CONFIG
-2_bilingual|onehot|en-hi|026|0.641
-2_bilingual|onehot|en-bn|021|0.417
-2_bilingual|onehot|en-ta|038|0.578
-2_bilingual|onehot|en-kn|025|0.52
-CONFIG
+##############################################################################################
+#############################################  VISUALIZATION #################################
+##############################################################################################
+#
+########### for multilingual zeroshot training  (en-indic) with hindi as the missing language
+#dataset='news_2015_official'
+#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
+#output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+#
+#### Backward compatibility flags
+##export NO_OUTEMBED=1
+#
+#while read e_r_l_p_v
+#do 
+#        expname=`echo "$e_r_l_p_v" | cut -f 1 -d '|'`
+#        representation=`echo "$e_r_l_p_v" | cut -f 2 -d '|'`
+#        langpair=`echo "$e_r_l_p_v" | cut -f 3 -d '|'`
+#        prefix=`echo "$e_r_l_p_v" | cut -f 4 -d '|'`
+#        loss=`echo "$e_r_l_p_v" | cut -f 5 -d '|'`
+#
+#        src_lang=`echo $langpair | cut -f 1 -d '-'`
+#        tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+#
+#        prefix1=`echo $prefix | sed 's,^0\+,,g'`
+#
+#        echo $e_r_l_p_v
+#        echo 
+#
+#        #### output directory to select 
+#        
+#        ### bilingual
+#        o=$output_dir/$expname/$representation/$langpair
+#
+#        ## multilingual 
+#        #o=$output_dir/$expname/$representation/multi-conf
+#
+#        if [ $dataset = 'news_2015' -o $dataset = 'news_2015_official' ]
+#        then 
+#            ### for multilingual experiments  (en-indic)
+#            #rep_str="en:onehot,$tgt_lang:$representation,bn:$representation,ta:$representation,kn:$representation"
+#            rep_str="en:onehot,$tgt_lang:$representation"
+#        elif [ $dataset = 'news_2015_reversed' ]
+#        then 
+#            ### for multilingual experiments  (indic-en)
+#            rep_str="en:onehot,$src_lang:$representation"
+#        elif [ $dataset = 'news_2015_indic' ]
+#        then 
+#            ##### for multilingual experiments  (indic-indic)
+#            rep_str="$tgt_lang:$representation,$src_lang:$representation"
+#            if [ $representation = 'phonetic' ]
+#            then 
+#                more_opts="--separate_output_embedding"
+#            fi 
+#        elif [ $dataset = 'ar-slavic_latin' ]
+#        then 
+#            #  for multilingual experiments (AR-SLAVIC_LATIN)
+#            rep_str="ar:onehot,$tgt_lang:$representation"
+#            more_opts="--shared_mapping_class CharacterMapping"
+#
+#        elif [ $dataset = 'slavic_latin-ar' ]
+#        then 
+#            # for multilingual experiments (SLAVIC_LATIN-AR)
+#            rep_str="ar:onehot,$src_lang:$representation"
+#            more_opts="--shared_mapping_class CharacterMapping"
+#        else
+#            echo 'Invalid dataset'
+#            exit 1
+#        fi 
+#
+#        echo 'Start: ' $dataset $expname $langpair $representation 
+#
+#        python $MLXLIT_HOME/src/unsup_xlit/encoder_analysis.py \
+#                --lang $src_lang \
+#                --representation "$rep_str" \
+#                --model_fname "$o/temp_models/my_model-$prefix1"  \
+#                --mapping_dir "$o/mappings" \
+#                --window_size 1 \
+#                $more_opts \
+#                --in_fname $data_dir/$langpair/test.$src_lang \
+#                --out_img_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.png \
+#                --out_html_fname $o/outputs/${prefix}_analysis_$langpair/encoder_rep.html
+#
+#        echo 'End: ' $dataset $expname $langpair $representation 
+#
+#done  <<CONFIG
+#2_bilingual|onehot|en-hi|026|0.641
+#2_bilingual|onehot|en-bn|021|0.417
+#2_bilingual|onehot|en-ta|038|0.578
+#2_bilingual|onehot|en-kn|025|0.52
+#CONFIG
 
 #2_bilingual|onehot|en-hi|026|0.641
 #2_bilingual|onehot|en-bn|021|0.417

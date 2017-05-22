@@ -349,6 +349,15 @@ def run_gather_metrics(basedir,exp_conf_fname,aug_exp_conf_name):
                 rec['mrr']=scores[2]
                 rec['map']=scores[3]
                 rec['a10']=scores[4]
+        else: 
+            print 'WARNING (run_gather_metrics): Could not analyze following experiment: {} {} {} {} {} epoch: {}'.format(
+                    rec['dataset'],
+                    rec['exp'],
+                    rec['representation'],
+                    slang,
+                    tlang,
+                    epoch
+                    )
 
         augmented_data.append(rec)
         print 'Finished Experiment: ' + exp_dirname
@@ -396,6 +405,15 @@ def run_lang_ind_err_rates(basedir,exp_conf_fname,aug_exp_conf_name):
             rec['ins_erate']=align.ins_error_rate(a_df) 
             rec['del_erate']=align.del_error_rate(a_df) 
             rec['sub_erate']=align.sub_error_rate(a_df)
+        else: 
+            print 'WARNING (run_lang_ind_err_rates): Could not analyze following experiment: {} {} {} {} {} epoch: {}'.format(
+                    rec['dataset'],
+                    rec['exp'],
+                    rec['representation'],
+                    slang,
+                    tlang,
+                    epoch
+                    )
         
         augmented_data.append(rec)
         print 'Finished Experiment: ' + exp_dirname
@@ -441,6 +459,15 @@ def run_lang_dep_err_rates(basedir,exp_conf_fname,aug_exp_conf_name):
             a_df=align.read_align_count_file('{}/alignment_count.csv'.format(out_dirname))
             rec['vow_erate']=align.vowel_error_rate(a_df,tlang) 
             rec['cons_erate']=align.consonant_error_rate(a_df,tlang) 
+        else: 
+            print 'WARNING (run_lang_dep_err_rates): Could not analyze following experiment: {} {} {} {} {} epoch: {}'.format(
+                    rec['dataset'],
+                    rec['exp'],
+                    rec['representation'],
+                    slang,
+                    tlang,
+                    epoch
+                    )
         
         augmented_data.append(rec)
         print 'Finished Experiment: ' + exp_dirname
@@ -484,7 +511,19 @@ def run_err_dist(basedir,exp_conf_fname,aug_exp_conf_name):
         print 'Starting Experiment: ' + exp_dirname
         if os.path.isdir(out_dirname) and align.cci.is_supported_language(rec['tgt']): 
             a_df=align.read_align_count_file('{}/alignment_count.csv'.format(out_dirname))
-            rec['vow_frac'],rec['cons_frac'],rec['oth_frac']=align.err_dist(a_df,tlang) 
+            rec['vow_ecount'],rec['cons_ecount'],rec['oth_ecount'],rec['all_ecount']=align.err_dist(a_df,tlang) 
+            rec['vow_frac']=rec['vow_ecount']/rec['all_ecount']
+            rec['cons_frac']=rec['cons_ecount']/rec['all_ecount']
+            rec['oth_frac']=rec['oth_ecount']/rec['all_ecount']
+        else: 
+            print 'WARNING (run_err_dist): Could not analyze following experiment: {} {} {} {} {} epoch: {}'.format(
+                    rec['dataset'],
+                    rec['exp'],
+                    rec['representation'],
+                    slang,
+                    tlang,
+                    epoch
+                    )
         
         augmented_data.append(rec)
         print 'Finished Experiment: ' + exp_dirname
@@ -493,7 +532,7 @@ def run_err_dist(basedir,exp_conf_fname,aug_exp_conf_name):
 
     new_df=pd.DataFrame(augmented_data)
     new_cols=[]
-    for col in ['vow_frac','cons_frac','oth_frac']: 
+    for col in ['vow_ecount','cons_ecount','oth_ecount','all_ecount','vow_frac','cons_frac','oth_frac']: 
         if col not in list(conf_df.columns): 
             new_cols.append(col)
     new_df.to_csv(aug_exp_conf_name,columns=list(conf_df.columns)+new_cols,index=False)
@@ -544,7 +583,7 @@ if __name__ == '__main__':
     exp_list='results_with_accuracy.csv'
 
     ## command to generate the analysis files for each experiment 
-    run_generate_analysis(basedir,exp_list) 
+    #run_generate_analysis(basedir,exp_list) 
 
     ## command to compare bilingual and multilingual experiments 
     ## mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
@@ -556,25 +595,31 @@ if __name__ == '__main__':
     #run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
 
     ## get transliteration metrics 
-    #aug_exp_list='results_with_accuracy_new.csv'
-    #run_gather_metrics(basedir,exp_list,aug_exp_list)
+    print 'Getting various metrics'
+    exp_list='results_with_accuracy.csv'
+    aug_exp_list='results_with_accuracy_2.csv'
+    run_gather_metrics(basedir,exp_list,aug_exp_list)
 
     ## get language independent error rates 
-    #exp_list='results_with_accuracy_new.csv'
-    #aug_exp_list='results_with_accuracy_new2.csv'
-    #run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
+    print 'Getting language independent error rates'
+    exp_list='results_with_accuracy_2.csv'
+    aug_exp_list='results_with_accuracy_3.csv'
+    run_lang_ind_err_rates(basedir,exp_list,aug_exp_list)
 
     ## get language dependent error rates 
-    #exp_list='results_with_accuracy.csv'
-    #aug_exp_list='results_with_accuracy_new.csv'
-    #run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
+    print 'Getting language dependent error rates'
+    exp_list='results_with_accuracy_3.csv'
+    aug_exp_list='results_with_accuracy_4.csv'
+    run_lang_dep_err_rates(basedir,exp_list,aug_exp_list)
 
     ### get error distribution based on vowel, consonants, others 
-    #exp_list='results_with_accuracy.csv'
-    #aug_exp_list='results_with_accuracy_new.csv'
-    #run_err_dist(basedir,exp_list,aug_exp_list)
+    print 'Getting error counts'
+    exp_list='results_with_accuracy_4.csv'
+    aug_exp_list='results_with_accuracy_5.csv'
+    run_err_dist(basedir,exp_list,aug_exp_list)
 
-    ### sort errors 
+    #### sort errors 
+    #print 'Sorting transliteration errors'
     #run_sort_errors(basedir,exp_list)
 
     #transliteration_analysis(

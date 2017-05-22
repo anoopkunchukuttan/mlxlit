@@ -435,6 +435,16 @@ def simple_ensemble(res1_fname,res2_fname,res_ens_fname):
                 #print score
                 res_ens_file.write( u'{} ||| {} ||| {} ||| {}\n'.format( r1_sentno, cand, -1.0, score ) )  
 
+def to_python_literal(infname,outfname): 
+    with codecs.open(infname,'r','utf-8') as infile,\
+         codecs.open(outfname,'w','utf-8') as outfile: 
+        
+        outfile.write('[\n')
+        for line in infile: 
+            c = line.strip()
+            outfile.write(u'u"\\u{:04x}"'.format(ord(c)) +u',\n')
+        outfile.write(']\n')
+
 if __name__=='__main__': 
 
     loader.load()
@@ -457,7 +467,9 @@ if __name__=='__main__':
 
             'remove_terminal_halant': remove_terminal_halant,
 
-            'simple_ensemble': simple_ensemble
+            'simple_ensemble': simple_ensemble,
+
+            'to_python_literal': to_python_literal,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
