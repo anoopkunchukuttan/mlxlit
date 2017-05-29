@@ -245,7 +245,6 @@ def run_comparison_onehot_phonetic(basedir,exp_conf_fname,out_dirname):
 
             transliteration_comparison(phonetic_dirname,phonetic_rec['epoch'],
                 onehot_dirname,onehot_rec['epoch'],
-                ref_fname,
                 slang,tlang,
                 out_fname)
 
@@ -597,12 +596,12 @@ if __name__ == '__main__':
 
     # command to compare bilingual and multilingual experiments 
     # mkdir -p $basedir/analysis/bi_vs_multi/heat_maps 
-    run_comparison_bi_multi(basedir,exp_list,'{}/analysis/bi_vs_multi/heat_maps'.format(basedir)) 
+    #run_comparison_bi_multi(basedir,exp_list,'{}/analysis/bi_vs_multi/heat_maps'.format(basedir)) 
 
 
     ## command to compare bilingual and multilingual experiments 
     ## /home/development/anoop/experiments/multilingual_unsup_xlit/analysis/onehot_vs_phonetic/heat_maps/
-    #run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
+    run_comparison_onehot_phonetic(basedir,exp_list,'{}/analysis/onehot_vs_phonetic/heat_maps'.format(basedir)) 
 
     ### get transliteration metrics 
     #print 'Getting various metrics'
