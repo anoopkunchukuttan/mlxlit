@@ -120,6 +120,7 @@ def transliteration_comparison(exp_dirname1,epoch1,
     diff_conf_mat=  confmat_2_df.subtract(confmat_1_df,fill_value=0.0)#.divide(confmat_2_df,fill_value=0.0)
     diff_conf_mat=diff_conf_mat.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     plot_confusion_matrix(diff_conf_mat,tlang,out_fname)
+    diff_conf_mat.to_csv('{}.csv'.format(out_fname),encoding='utf-8')
 
 ########  Commands #############
 
