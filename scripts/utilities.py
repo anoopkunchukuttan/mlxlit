@@ -424,8 +424,8 @@ def simple_ensemble(res1_fname,res2_fname,res_ens_fname):
             ## average scores 
             sorted_scores=[]
             for cand,score_list in final_cands.iteritems(): 
-                #sorted_scores.append( (cand,sum(score_list)/len(score_list)) )
-                sorted_scores.append( (cand,sum(score_list)/2.0) )
+                sorted_scores.append( (cand,sum(score_list)/len(score_list)) )
+                #sorted_scores.append( (cand,sum(score_list)/2.0) )
         
             ## sort by score 
             sorted_scores.sort(key=lambda x:x[1],reverse=True)                

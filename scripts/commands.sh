@@ -507,9 +507,9 @@ export CUDA_VISIBLE_DEVICES=0
 ##############################################################################################
 #############################################  VISUALIZATION #################################
 ##############################################################################################
-#
+
 ########### for multilingual zeroshot training  (en-indic) with hindi as the missing language
-#dataset='news_2015_official'
+#dataset='news_2015_reversed'
 #data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/mosesformat/$dataset
 #output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
 #
@@ -589,10 +589,10 @@ export CUDA_VISIBLE_DEVICES=0
 #        echo 'End: ' $dataset $expname $langpair $representation 
 #
 #done  <<CONFIG
-#2_bilingual|onehot|en-hi|026|0.641
-#2_bilingual|onehot|en-bn|021|0.417
-#2_bilingual|onehot|en-ta|038|0.578
-#2_bilingual|onehot|en-kn|025|0.52
+#2_multilingual|phonetic|hi-en|024|0.511134
+#2_multilingual|phonetic|bn-en|019|0.540102
+#2_multilingual|phonetic|ta-en|016|0.259259
+#2_multilingual|phonetic|kn-en|032|0.476954
 #CONFIG
 
 #2_bilingual|onehot|en-hi|026|0.641
@@ -978,27 +978,50 @@ export CUDA_VISIBLE_DEVICES=0
 #
 #done 
 
+#############################################################################
+################ Simple ensemble of onehot and phonetic #####################
+#############################################################################
 
-#dataset='news_2015_indic'
-#data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
-#
-#src_lang='bn'
-#tgt_lang='hi'
-#langpair=$src_lang-$tgt_lang
-#
-## generate NEWS 2015 evaluation format output file 
-#python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
-#        "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.id" \
-#        "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
-#        "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
-#        "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#        "system" "conll2016" "$src_lang" "$tgt_lang"  
-#
-## run evaluation 
-#python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
-#        -t "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
-#        -i "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
-#        -o "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
-#         > "./test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
-#
-##python utilities.py simple_ensemble /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/onehot_shared/multi-conf/outputs/010test.nbest.bn-hi.hi /home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/news_2015_indic/2_multilingual/phonetic/multi-conf/outputs/015test.nbest.bn-hi.hi test.nbest.bn-hi.hi 
+dataset='news_2015_reversed'
+data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+
+for info in `echo hi-en_037_024 bn-en_022_019 kn-en_022_032 ta-en_031_016`
+do 
+
+    langpair=`echo  $info | cut -f 1 -d '_' `
+    oh_prefix=`echo $info | cut -f 2 -d '_' `
+    ph_prefix=`echo $info | cut -f 3 -d '_' `
+
+    src_lang=`echo $langpair | cut -f 1 -d '-' `
+    tgt_lang=`echo $langpair | cut -f 2 -d '-' `
+
+    oh_outdir=$output_dir/2_multilingual/onehot_shared/multi-conf
+    ph_outdir=$output_dir/2_multilingual/phonetic/multi-conf
+    ens_outdir=$output_dir/2_multilingual/ens_ohs_phonetic/multi-conf
+
+    mkdir -p $ens_outdir/outputs
+
+    ## ensemble the output
+    python utilities.py simple_ensemble \
+        $oh_outdir/outputs/${oh_prefix}test.nbest.$langpair.$tgt_lang \
+        $ph_outdir/outputs/${ph_prefix}test.nbest.$langpair.$tgt_lang \
+        $ens_outdir/outputs/001test.nbest.$langpair.$tgt_lang
+    
+    # generate NEWS 2015 evaluation format output file 
+    python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+            "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.id"  \
+            "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
+            $ens_outdir/outputs/001test.nbest.$langpair.${tgt_lang} \
+            $ens_outdir/outputs/001test.nbest.$langpair.${tgt_lang}.xml \
+            "system" "conll2016" "$src_lang" "$tgt_lang"  
+    
+    # run evaluation 
+    python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+            -t "$data_dir/$langpair/test/test.$src_lang-$tgt_lang.xml" \
+            -i "$ens_outdir/outputs/001test.nbest.$langpair.${tgt_lang}.xml" \
+            -o "$ens_outdir/outputs/001test.nbest.$langpair.${tgt_lang}.detaileval.csv" \
+             > "$ens_outdir/outputs/001test.nbest.$langpair.${tgt_lang}.eval"
+
+done 
+
