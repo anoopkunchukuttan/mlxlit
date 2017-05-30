@@ -9,6 +9,7 @@ class ParallelDataReader():
                 self.lang2 = lang2
                 self.mapping = mapping
                 self.max_sequence_length = max_sequence_length
+                self.train_size=train_size
 
                 self.sequences = dict()
                 self.masks = dict()
@@ -38,6 +39,8 @@ class ParallelDataReader():
         def read_file(self, filename, lang):
                 # Reading the file
                 file_read = map(lambda x: [u'GO']+(x.strip().split(' '))[:self.max_sequence_length-2]+[u'EOW'],codecs.open(filename,'r','utf-8').readlines())
+                if self.train_size > 0 : 
+                    file_read = file_read[:self.train_size]
 
                 #lengths is list of lengths of all words. i.e. a list of integers with size num_words in dataset 
                 self.lengths[lang] = np.array(map(lambda x: len(x), file_read))

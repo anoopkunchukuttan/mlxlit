@@ -3,15 +3,18 @@ import codecs
 
 class MonoDataReader():
     # Initializer and data reader
-    def __init__(self, lang, filename, mapping, max_sequence_length):
+    def __init__(self, lang, filename, mapping, max_sequence_length, train_size=-1):
         # Taking args and storing as class vars
         self.lang = lang
         self.mapping = mapping
         self.max_sequence_length = max_sequence_length
+        self.train_size = train_size
 
         # Reading the file
         # NOTE: -2 should be -1 
         file_read = map(lambda x: [u'GO']+(x.strip().split(' '))[:max_sequence_length-2]+[u'EOW'],codecs.open(filename,'r','utf-8').readlines())
+        if self.train_size > 0 : 
+            file_read = file_read[:self.train_size]
 
         #lengths is list of lengths of all words. i.e. a list of integers with size num_words in dataset 
         self.lengths = np.array(map(lambda x: len(x), file_read))

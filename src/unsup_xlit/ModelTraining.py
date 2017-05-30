@@ -168,6 +168,7 @@ if __name__ == '__main__' :
 
     parser.add_argument('--data_dir', type = str, help = 'data directory')
     parser.add_argument('--output_dir', type = str, help = 'output folder name')
+    parser.add_argument('--train_size', type = int, metavar = 'N', default = -1, help = 'use the first N sequence pairs for training')
 
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
     parser.add_argument('--unseen_langs', type = str, default = None, help = 'List of languages not seen during training given as: "lang1,lang2,lang3,lang4,..."')
@@ -223,6 +224,7 @@ if __name__ == '__main__' :
     ## directories 
     data_dir = args.data_dir
     output_dir = args.output_dir
+    train_size = args.train_size 
 
     ## architecture
     enc_type = args.enc_type
@@ -341,7 +343,7 @@ if __name__ == '__main__' :
     for lang_pair in parallel_train_langs:
         file_prefix = data_dir+'/parallel_train/'+lang_pair[0]+'-'+lang_pair[1]+'.'
         parallel_train_data[lang_pair] = ParallelDataReader.ParallelDataReader(lang_pair[0],lang_pair[1],
-            file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length)
+            file_prefix+lang_pair[0],file_prefix+lang_pair[1],mapping,max_sequence_length,train_size)
 
     ## complete vocabulary creation
     for lang in all_langs: 
