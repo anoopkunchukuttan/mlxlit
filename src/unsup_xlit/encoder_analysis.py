@@ -27,6 +27,8 @@ from indicnlp import loader
 from indicnlp.script import indic_scripts as isc
 from indicnlp.transliterate import unicode_transliterate  as indtrans
 
+from cfilt.transliteration.analysis import slavic_characters 
+
 """
 Flags to be used in the program 
 """
@@ -77,6 +79,9 @@ def input_chars_to_analyze():
     elif isc.is_supported_language(FLAGS.lang): 
         offsets_to_analyze= range(0x3e, 0x4d)  ## only vowel diacritics included
         chars_to_analyze = [ isc.offset_to_char(x,FLAGS.lang) for x in offsets_to_analyze ]
+    elif slavic_characters.is_supported_language_latin(FLAGS.lang): 
+        chars_to_analyze = slavic_characters.latin_vowels
+        #chars_to_analyze=['A','E','I','O','U']
     
     return chars_to_analyze
 

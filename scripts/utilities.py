@@ -5,12 +5,14 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
-from scipy.misc.common import logsumexp
+from scipy.misc import logsumexp
 import itertools as it
 import random
 
 from indicnlp.script import  indic_scripts as isc
 from indicnlp import loader
+
+import buckwalter
 
 def read_monolingual_corpus(corpus_fname): 
     with codecs.open(corpus_fname,'r','utf-8') as infile:
@@ -435,6 +437,31 @@ def simple_ensemble(res1_fname,res2_fname,res_ens_fname):
                 #print score
                 res_ens_file.write( u'{} ||| {} ||| {} ||| {}\n'.format( r1_sentno, cand, -1.0, score ) )  
 
+def xlit_detail_eval(infname,outfname,lang):
+    """
+        Added transliteration to the detailed evaluation file 
+    """
+    ### Create Arabic to Roman transliterator using buckwalter scheme
+    xlitor=None
+    if lang=='ar': 
+        xlitor=buckwalter.Transliterator(mode='a2r')
+
+    assert (xlitor is not None) 
+
+    with codecs.open(infname,'r','utf-8') as infile, \
+         codecs.open(outfname,'w','utf-8') as outfile: 
+
+        for n,line in enumerate(infile): 
+            
+            if n > 0:
+                w=line.strip().replace(u'"',u'').split(u',')
+                w.append(xlitor.transliterate(w[1]))
+                w.append(xlitor.transliterate(w[5]))
+                w.append(xlitor.transliterate(w[8]))
+                outfile.write( u','.join(w) + u'\n' )
+            else: 
+                outfile.write(line.strip() + u',"First candidate (xlit)","Best matching reference (xlit)","References (clit)"' + u'\n'   )
+
 def to_python_literal(infname,outfname): 
     with codecs.open(infname,'r','utf-8') as infile,\
          codecs.open(outfname,'w','utf-8') as outfile: 
@@ -470,6 +497,8 @@ if __name__=='__main__':
             'simple_ensemble': simple_ensemble,
 
             'to_python_literal': to_python_literal,
+
+            'xlit_detail_eval': xlit_detail_eval,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
