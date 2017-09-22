@@ -82,6 +82,7 @@ def input_chars_to_analyze():
     elif slavic_characters.is_supported_language_latin(FLAGS.lang): 
         chars_to_analyze = slavic_characters.latin_vowels
         #chars_to_analyze=['A','E','I','O','U']
+        #chars_to_analyze=['K','C','F','V','P','B']
     
     return chars_to_analyze
 

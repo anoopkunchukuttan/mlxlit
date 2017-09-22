@@ -224,6 +224,14 @@ def iterate_nbest_list(nbest_fname):
 
     infile.close()
 
+def convert_to_1best_format(infname,outfname):
+    """
+    Input is n-best format 
+    """
+    with codecs.open(outfname,'w','utf-8') as outfile:
+        for sent_no, parsed_lines in iterate_nbest_list(infname): 
+            outfile.write(parsed_lines[0][1].strip()+u'\n')
+
 def transfer_pivot_translate(output_s_b_fname,output_b_t_fname,output_final_fname,n=10): 
 
     b_t_iter=iter(iterate_nbest_list(output_b_t_fname))
@@ -462,6 +470,19 @@ def xlit_detail_eval(infname,outfname,lang):
             else: 
                 outfile.write(line.strip() + u',"First candidate (xlit)","Best matching reference (xlit)","References (clit)"' + u'\n'   )
 
+def ar2roman_batch(infname,outfname):
+    """
+        Added transliteration to the detailed evaluation file 
+    """
+    xlitor=buckwalter.Transliterator(mode='a2r')
+
+    with codecs.open(infname,'r','utf-8') as infile, \
+         codecs.open(outfname,'w','utf-8') as outfile: 
+
+        for line in infile:              
+            w=xlitor.transliterate(line.strip())
+            outfile.write( w + u'\n' )
+
 def to_python_literal(infname,outfname): 
     with codecs.open(infname,'r','utf-8') as infile,\
          codecs.open(outfname,'w','utf-8') as outfile: 
@@ -478,6 +499,7 @@ if __name__=='__main__':
 
     commands = {
             'convert_output_format': convert_output_format,
+            'convert_to_1best_format':convert_to_1best_format,
 
             'transfer_pivot_translate': transfer_pivot_translate,
             'compute_accuracy': compute_accuracy,
@@ -499,6 +521,8 @@ if __name__=='__main__':
             'to_python_literal': to_python_literal,
 
             'xlit_detail_eval': xlit_detail_eval,
+
+            'ar2roman_batch': ar2roman_batch,
     }
 
     commands[sys.argv[1]](*sys.argv[2:])
