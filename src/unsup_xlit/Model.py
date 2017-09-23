@@ -58,7 +58,7 @@ class Model():
     def compute_hidden_representation(self, sequences, sequence_lengths, lang):
         x = tf.transpose(tf.add(tf.nn.embedding_lookup(self.embed_W[lang],sequences),self.embed_b),[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
-        x = tf.split(0,self.max_sequence_length,x)
+        x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x)
         _, states = rnn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
 
         return states
@@ -75,7 +75,7 @@ class Model():
             # for first iteration, decoder_input embedding is used, otherwise, output from previous iteration is used
             # embedding lookup replace the character index with its embedding_size vector representation, which is given to the rnn_cell
             if(i==0):
-                current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.pack([batch_size,1])),[-1,self.embedding_size])
+                current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.stack([batch_size,1])),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[lang],target_sequence[:,i-1])+self.embed_b
 
@@ -87,8 +87,8 @@ class Model():
             # Generating one-hot labels for target_sequences
             labels = tf.expand_dims(target_sequence[:,i],1)
             indices = tf.expand_dims(tf.range(0,batch_size),1)
-            concated = tf.concat(1,[indices,labels])
-            onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size]),1.0,0.0)
+            concated = tf.concat(axis=1,values=[indices,labels])
+            onehot_labels = tf.sparse_to_dense(concated,tf.stack([batch_size,self.vocab_size]),1.0,0.0)
 
             # Find probabilities of character
             logit_words = tf.matmul(output,self.out_W[lang])+self.out_b[lang]
@@ -97,7 +97,7 @@ class Model():
             output_id = tf.argmax(logit_words,1)
 
             # Finding cross entropy
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_words, onehot_labels)
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logit_words, labels=onehot_labels)
             # Takaing cross entropy for only non-padding characters
             cross_entropy = cross_entropy * target_masks[:,i]
 
@@ -205,7 +205,7 @@ class Model():
 
         for i in range(self.max_sequence_length):
             if(i==0):
-                current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],tf.pack([batch_size,1])),[-1,self.embedding_size])
+                current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],tf.stack([batch_size,1])),[-1,self.embedding_size])
             else:
                 current_emb = tf.nn.embedding_lookup(self.embed_W[target_lang],outputs[-1])+self.embed_b
             if i > 0 : tf.get_variable_scope().reuse_variables()
@@ -216,7 +216,7 @@ class Model():
             output_id = tf.argmax(logit_words,1)
             outputs += [output_id]
 
-        return tf.transpose(tf.pack(outputs), perm=[1,0])
+        return tf.transpose(tf.stack(outputs), perm=[1,0])
 
     # Arguments: target_sequences, and predicted_sequences. Both should have same size, and must be numpy arrays
 

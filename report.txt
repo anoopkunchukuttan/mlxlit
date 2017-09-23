@@ -1,0 +1,759 @@
+================================================================================
+Input tree: 'multiling_unsup_xlit_migrate/'
+================================================================================
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/util.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/util.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/__init__.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/__init__.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/lm_eval/reader.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/lm_eval/reader.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/lm_eval/reader_test.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/lm_eval/reader_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/lm_eval/ptb_word_lm.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/lm_eval/ptb_word_lm.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/lm_eval/ptb_word_lm.py' Line 130
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:               for input_ in tf.split(1, num_steps, inputs)]
+                                                                     
+    New:               for input_ in tf.split(axis=1, num_or_size_splits=num_steps, value=inputs)]
+                                              ~~~~~   ~~~~~~~~~~~~~~~~~~~           ~~~~~~         
+
+'multiling_unsup_xlit_migrate/src/lm_eval/ptb_word_lm.py' Line 308
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.initialize_all_variables' to 'tf.global_variables_initializer'
+
+    Old:     tf.initialize_all_variables().run()
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+    New:     tf.global_variables_initializer().run()
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+
+'multiling_unsup_xlit_migrate/src/lm_eval/ptb_word_lm.py' Line 143
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:     output = tf.reshape(tf.concat(1, outputs), [-1, size])
+                                                                    
+    New:     output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
+                                           ~~~~~   ~~~~~~~                      
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/lm_eval/__init__.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/lm_eval/__init__.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/AttentionModel.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 257
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:         a3=tf.pack(enc_outputs)
+                    ~~~~~~~              
+    New:         a3=tf.stack(enc_outputs)
+                    ~~~~~~~~              
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 683
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 prev_best_outputs = tf.concat(1,[top_beam_prev_outputs,prev_symbols])
+                                                                                               
+    New:                 prev_best_outputs = tf.concat(axis=1,values=[top_beam_prev_outputs,prev_symbols])
+                                                       ~~~~~  ~~~~~~~                                      
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 548
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 final_outputs = tf.concat(1,[top_n_prev_outputs,final_flat_symbols])
+                                                                                              
+    New:                 final_outputs = tf.concat(axis=1,values=[top_n_prev_outputs,final_flat_symbols])
+                                                   ~~~~~  ~~~~~~~                                         
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 389
+--------------------------------------------------------------------------------
+
+Added keyword 'logits' to reordered function 'tf.nn.softmax_cross_entropy_with_logits'
+Added keyword 'labels' to reordered function 'tf.nn.softmax_cross_entropy_with_logits'
+
+    Old:             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_words, onehot_labels)
+                                                                                                         
+    New:             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logit_words, labels=onehot_labels)
+                                                                             ~~~~~~~             ~~~~~~~               
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 689
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:                         tf.reshape(   tf.tile(tf.pack(  enc_output   ),[1,1,beam_size]),
+                                                       ~~~~~~~                                    
+    New:                         tf.reshape(   tf.tile(tf.stack(  enc_output   ),[1,1,beam_size]),
+                                                       ~~~~~~~~                                    
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 488
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 current_input=tf.concat(1,[current_emb,context])
+                                                                          
+    New:                 current_input=tf.concat(axis=1,values=[current_emb,context])
+                                                 ~~~~~  ~~~~~~~                       
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 688
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.unpack' to 'tf.unstack'
+
+    Old:                 enc_output=tf.unpack(
+                                    ~~~~~~~~~  
+    New:                 enc_output=tf.unstack(
+                                    ~~~~~~~~~~  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 266
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         att_ref=tf.concat(1,[prev_state,prev_out_embed])
+                                                                  
+    New:         att_ref=tf.concat(axis=1,values=[prev_state,prev_out_embed])
+                                   ~~~~~  ~~~~~~~                             
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 523
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 prev_best_outputs = tf.concat(1,[top_beam_prev_outputs,prev_symbols])
+                                                                                               
+    New:                 prev_best_outputs = tf.concat(axis=1,values=[top_beam_prev_outputs,prev_symbols])
+                                                       ~~~~~  ~~~~~~~                                      
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 271
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         a6=tf.concat(1,[a2,a5],name='attn__a6__network_input')
+                                                                        
+    New:         a6=tf.concat(axis=1,values=[a2,a5],name='attn__a6__network_input')
+                              ~~~~~  ~~~~~~~                                        
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 368
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 current_input=tf.concat(1,[current_emb,context])
+                                                                          
+    New:                 current_input=tf.concat(axis=1,values=[current_emb,context])
+                                                 ~~~~~  ~~~~~~~                       
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 529
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:                         tf.reshape(   tf.tile(tf.pack(  enc_output   ),[1,1,beam_size]),
+                                                       ~~~~~~~                                    
+    New:                         tf.reshape(   tf.tile(tf.stack(  enc_output   ),[1,1,beam_size]),
+                                                       ~~~~~~~~                                    
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 628
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 current_input=tf.concat(1,[current_emb,context])
+                                                                          
+    New:                 current_input=tf.concat(axis=1,values=[current_emb,context])
+                                                 ~~~~~  ~~~~~~~                       
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 528
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.unpack' to 'tf.unstack'
+
+    Old:                 enc_output=tf.unpack(
+                                    ~~~~~~~~~  
+    New:                 enc_output=tf.unstack(
+                                    ~~~~~~~~~~  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 708
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 final_outputs = tf.concat(1,[top_n_prev_outputs,final_flat_symbols])
+                                                                                              
+    New:                 final_outputs = tf.concat(axis=1,values=[top_n_prev_outputs,final_flat_symbols])
+                                                   ~~~~~  ~~~~~~~                                         
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 379
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:             concated = tf.concat(1,[indices,labels])
+                                                              
+    New:             concated = tf.concat(axis=1,values=[indices,labels])
+                                          ~~~~~  ~~~~~~~                  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionModel.py' Line 380
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:             onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size[lang]]),1.0,0.0)
+                                                                 ~~~~~~~                                              
+    New:             onehot_labels = tf.sparse_to_dense(concated,tf.stack([batch_size,self.vocab_size[lang]]),1.0,0.0)
+                                                                 ~~~~~~~~                                              
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/ParallelDataReader.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/ParallelDataReader.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/AttentionLangInfoModel.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 256
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         a6=tf.concat(1,[a2,a5],name='attn__a6__network_input')
+                                                                        
+    New:         a6=tf.concat(axis=1,values=[a2,a5],name='attn__a6__network_input')
+                              ~~~~~  ~~~~~~~                                        
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 353
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 current_input=tf.concat(1,[current_emb,context])
+                                                                          
+    New:                 current_input=tf.concat(axis=1,values=[current_emb,context])
+                                                 ~~~~~  ~~~~~~~                       
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 514
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:                         tf.reshape(   tf.tile(tf.pack(  enc_output   ),[1,1,beam_size]),
+                                                       ~~~~~~~                                    
+    New:                         tf.reshape(   tf.tile(tf.stack(  enc_output   ),[1,1,beam_size]),
+                                                       ~~~~~~~~                                    
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 513
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.unpack' to 'tf.unstack'
+
+    Old:                 enc_output=tf.unpack(
+                                    ~~~~~~~~~  
+    New:                 enc_output=tf.unstack(
+                                    ~~~~~~~~~~  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 364
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:             concated = tf.concat(1,[indices,labels])
+                                                              
+    New:             concated = tf.concat(axis=1,values=[indices,labels])
+                                          ~~~~~  ~~~~~~~                  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 365
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:             onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size[lang]]),1.0,0.0)
+                                                                 ~~~~~~~                                              
+    New:             onehot_labels = tf.sparse_to_dense(concated,tf.stack([batch_size,self.vocab_size[lang]]),1.0,0.0)
+                                                                 ~~~~~~~~                                              
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 242
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:         a3=tf.pack(enc_outputs)
+                    ~~~~~~~              
+    New:         a3=tf.stack(enc_outputs)
+                    ~~~~~~~~              
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 533
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 final_outputs = tf.concat(1,[top_n_prev_outputs,final_flat_symbols])
+                                                                                              
+    New:                 final_outputs = tf.concat(axis=1,values=[top_n_prev_outputs,final_flat_symbols])
+                                                   ~~~~~  ~~~~~~~                                         
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 374
+--------------------------------------------------------------------------------
+
+Added keyword 'logits' to reordered function 'tf.nn.softmax_cross_entropy_with_logits'
+Added keyword 'labels' to reordered function 'tf.nn.softmax_cross_entropy_with_logits'
+
+    Old:             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_words, onehot_labels)
+                                                                                                         
+    New:             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logit_words, labels=onehot_labels)
+                                                                             ~~~~~~~             ~~~~~~~               
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 473
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 current_input=tf.concat(1,[current_emb,context])
+                                                                          
+    New:                 current_input=tf.concat(axis=1,values=[current_emb,context])
+                                                 ~~~~~  ~~~~~~~                       
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 251
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         att_ref=tf.concat(1,[prev_state,prev_out_embed])
+                                                                  
+    New:         att_ref=tf.concat(axis=1,values=[prev_state,prev_out_embed])
+                                   ~~~~~  ~~~~~~~                             
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/AttentionLangInfoModel.py' Line 508
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:                 prev_best_outputs = tf.concat(1,[top_beam_prev_outputs,prev_symbols])
+                                                                                               
+    New:                 prev_best_outputs = tf.concat(axis=1,values=[top_beam_prev_outputs,prev_symbols])
+                                                       ~~~~~  ~~~~~~~                                      
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/Mapping.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/Mapping.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/Model.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 219
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:         return tf.transpose(tf.pack(outputs), perm=[1,0])
+                                     ~~~~~~~                       
+    New:         return tf.transpose(tf.stack(outputs), perm=[1,0])
+                                     ~~~~~~~~                       
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 100
+--------------------------------------------------------------------------------
+
+Added keyword 'logits' to reordered function 'tf.nn.softmax_cross_entropy_with_logits'
+Added keyword 'labels' to reordered function 'tf.nn.softmax_cross_entropy_with_logits'
+
+    Old:             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_words, onehot_labels)
+                                                                                                         
+    New:             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logit_words, labels=onehot_labels)
+                                                                             ~~~~~~~             ~~~~~~~               
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 78
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:                 current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.pack([batch_size,1])),[-1,self.embedding_size])
+                                                                                   ~~~~~~~                                            
+    New:                 current_emb = tf.reshape(tf.tile(self.decoder_input[lang],tf.stack([batch_size,1])),[-1,self.embedding_size])
+                                                                                   ~~~~~~~~                                            
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 208
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:                 current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],tf.pack([batch_size,1])),[-1,self.embedding_size])
+                                                                                          ~~~~~~~                                            
+    New:                 current_emb = tf.reshape(tf.tile(self.decoder_input[target_lang],tf.stack([batch_size,1])),[-1,self.embedding_size])
+                                                                                          ~~~~~~~~                                            
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 90
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:             concated = tf.concat(1,[indices,labels])
+                                                              
+    New:             concated = tf.concat(axis=1,values=[indices,labels])
+                                          ~~~~~  ~~~~~~~                  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 91
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:             onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size]),1.0,0.0)
+                                                                 ~~~~~~~                                        
+    New:             onehot_labels = tf.sparse_to_dense(concated,tf.stack([batch_size,self.vocab_size]),1.0,0.0)
+                                                                 ~~~~~~~~                                        
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/Model.py' Line 61
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         x = tf.split(0,self.max_sequence_length,x)
+                                                            
+    New:         x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x)
+                              ~~~~~  ~~~~~~~~~~~~~~~~~~~                         ~~~~~~   
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/ModelDecodingWithLm.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/ModelDecodingWithLm.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/ModelDecoding.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/ModelDecoding.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/ModelDecoding.py' Line 182
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.initialize_all_variables' to 'tf.global_variables_initializer'
+
+    Old:     sess.run(tf.initialize_all_variables())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    New:     sess.run(tf.global_variables_initializer())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/encoders.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/encoders.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoders.py' Line 114
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.unpack' to 'tf.unstack'
+
+    Old:         enc_outputs=tf.unpack(tf.transpose(tf.nn.dropout(enc_output_matrix,dropout_keep_prob),[1,0,2]))
+                             ~~~~~~~~~                                                                           
+    New:         enc_outputs=tf.unstack(tf.transpose(tf.nn.dropout(enc_output_matrix,dropout_keep_prob),[1,0,2]))
+                             ~~~~~~~~~~                                                                           
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoders.py' Line 52
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
+                                                                                 
+    New:         x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x,name='encoder_input')
+                              ~~~~~  ~~~~~~~~~~~~~~~~~~~                         ~~~~~~                        
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoders.py' Line 29
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
+                                                                                 
+    New:         x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x,name='encoder_input')
+                              ~~~~~  ~~~~~~~~~~~~~~~~~~~                         ~~~~~~                        
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoders.py' Line 110
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         enc_output_matrix=tf.reshape(tf.squeeze(tf.concat(3,pooled_outputs)),
+                                                                                       
+    New:         enc_output_matrix=tf.reshape(tf.squeeze(tf.concat(axis=3,values=pooled_outputs)),
+                                                                   ~~~~~  ~~~~~~~                  
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoders.py' Line 119
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.unpack' to 'tf.unstack'
+
+    Old:             return tf.add_n(tf.unpack(tf.squeeze(s)))/self.max_sequence_length
+                                     ~~~~~~~~~                                          
+    New:             return tf.add_n(tf.unstack(tf.squeeze(s)))/self.max_sequence_length
+                                     ~~~~~~~~~~                                          
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/ModelTraining.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/ModelTraining.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/ModelTraining.py' Line 465
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.SummaryWriter' to 'tf.summary.FileWriter'
+
+    Old:     tf.train.SummaryWriter(log_dir,sess.graph)
+             ~~~~~~~~~~~~~~~~~~~~~~                     
+    New:     tf.summary.FileWriter(log_dir,sess.graph)
+             ~~~~~~~~~~~~~~~~~~~~~                     
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/ModelTraining.py' Line 460
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.initialize_all_variables' to 'tf.global_variables_initializer'
+
+    Old:     sess.run(tf.initialize_all_variables())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    New:     sess.run(tf.global_variables_initializer())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/MonoDataReader.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/MonoDataReader.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/LanguageModel.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 326
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.initialize_all_variables' to 'tf.global_variables_initializer'
+
+    Old:     sess.run(tf.initialize_all_variables())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    New:     sess.run(tf.global_variables_initializer())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 585
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.all_variables' to 'tf.global_variables'
+
+    Old:     for v in tf.all_variables(): 
+                      ~~~~~~~~~~~~~~~~     
+    New:     for v in tf.global_variables(): 
+                      ~~~~~~~~~~~~~~~~~~~     
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 138
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         label_sequences=tf.concat(1, [sequences[:,1:],placeholder])
+                                                                             
+    New:         label_sequences=tf.concat(axis=1, values=[sequences[:,1:],placeholder])
+                                           ~~~~~   ~~~~~~~                               
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 331
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.train.SummaryWriter' to 'tf.summary.FileWriter'
+
+    Old:     tf.train.SummaryWriter(log_dir,sess.graph)
+             ~~~~~~~~~~~~~~~~~~~~~~                     
+    New:     tf.summary.FileWriter(log_dir,sess.graph)
+             ~~~~~~~~~~~~~~~~~~~~~                     
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 108
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         label_sequences=tf.concat(1,[sequences[:,1:],placeholder])
+                                                                            
+    New:         label_sequences=tf.concat(axis=1,values=[sequences[:,1:],placeholder])
+                                           ~~~~~  ~~~~~~~                               
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 145
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         t2l=lambda t: tf.split(0,l,t)
+                                               
+    New:         t2l=lambda t: tf.split(axis=0,num_or_size_splits=l,value=t)
+                                        ~~~~~  ~~~~~~~~~~~~~~~~~~~  ~~~~~~   
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 83
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         x = tf.split(0,self.max_sequence_length,x)
+                                                            
+    New:         x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x)
+                              ~~~~~  ~~~~~~~~~~~~~~~~~~~                         ~~~~~~   
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 565
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.all_variables' to 'tf.global_variables'
+
+    Old:     for v in tf.all_variables(): 
+                      ~~~~~~~~~~~~~~~~     
+    New:     for v in tf.global_variables(): 
+                      ~~~~~~~~~~~~~~~~~~~     
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/LanguageModel.py' Line 89
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         output = tf.reshape(tf.concat(0, enc_outputs), [-1, self.rnn_size])
+                                                                                     
+    New:         output = tf.reshape(tf.concat(axis=0, values=enc_outputs), [-1, self.rnn_size])
+                                               ~~~~~   ~~~~~~~                                   
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/__init__.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/__init__.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/utilities.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/utilities.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/src/unsup_xlit/encoder_analysis.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/src/unsup_xlit/encoder_analysis.py'
+--------------------------------------------------------------------------------
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoder_analysis.py' Line 270
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.initialize_all_variables' to 'tf.global_variables_initializer'
+
+    Old:         sess.run(tf.initialize_all_variables())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    New:         sess.run(tf.global_variables_initializer())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+'multiling_unsup_xlit_migrate/src/unsup_xlit/encoder_analysis.py' Line 159
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.pack' to 'tf.stack'
+
+    Old:     return tf.transpose(tf.pack(enc_outputs),perm=[1,0,2])
+                                 ~~~~~~~                            
+    New:     return tf.transpose(tf.stack(enc_outputs),perm=[1,0,2])
+                                 ~~~~~~~~                            
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/scripts/transliteration_analysis.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/scripts/transliteration_analysis.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/scripts/buckwalter.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/scripts/buckwalter.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'multiling_unsup_xlit_migrate/scripts/utilities.py'
+ outputting to 'multiling_unsup_xlit_migrate_changed/scripts/utilities.py'
+--------------------------------------------------------------------------------
+
+

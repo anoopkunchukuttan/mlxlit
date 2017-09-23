@@ -127,7 +127,7 @@ class PTBModel(object):
     ##The alternative version of the code below is:
     
     inputs = [tf.squeeze(input_, [1])
-              for input_ in tf.split(1, num_steps, inputs)]
+              for input_ in tf.split(axis=1, num_or_size_splits=num_steps, value=inputs)]
     outputs, state = tf.nn.rnn(cell, inputs, initial_state=self._initial_state)
 
     #### Tutorial version 
@@ -140,7 +140,7 @@ class PTBModel(object):
     #    (cell_output, state) = cell(inputs[:, time_step, :], state)
     #    outputs.append(cell_output)
 
-    output = tf.reshape(tf.concat(1, outputs), [-1, size])
+    output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
     softmax_w = tf.get_variable("softmax_w", [size, vocab_size])
     softmax_b = tf.get_variable("softmax_b", [vocab_size])
     logits = tf.matmul(output, softmax_w) + softmax_b
@@ -305,7 +305,7 @@ def main(_):
       mvalid = PTBModel(is_training=False, config=config)
       mtest = PTBModel(is_training=False, config=eval_config)
 
-    tf.initialize_all_variables().run()
+    tf.global_variables_initializer().run()
 
     for i in range(config.max_max_epoch):
       lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)

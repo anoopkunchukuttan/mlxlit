@@ -156,7 +156,7 @@ def compute_hidden_representation(model, sequences, sequence_lengths, lang):
     sequence_embeddings = tf.add(tf.nn.embedding_lookup(model.embed_W[lang],sequences),model.embed_b[lang])
     _ , enc_outputs = model.input_encoder.encode(sequence_embeddings,sequence_lengths,dropout_keep_prob)
 
-    return tf.transpose(tf.pack(enc_outputs),perm=[1,0,2])
+    return tf.transpose(tf.stack(enc_outputs),perm=[1,0,2])
 
 
 def get_label(x,lang): 
@@ -267,7 +267,7 @@ def main(argv=None):
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.global_variables_initializer())
         saver.restore(sess,FLAGS.model_fname)
         
         print "Session started"

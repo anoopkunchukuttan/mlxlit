@@ -80,13 +80,13 @@ class LanguageModel(object):
         ### reshape 
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
-        x = tf.split(0,self.max_sequence_length,x)
+        x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x)
 
         ## run through RNN layer 
         cell=tf.nn.rnn_cell.DropoutWrapper(self.encoder_cell,output_keep_prob=dropout_keep_prob)
         enc_outputs, states = tf.nn.rnn(self.encoder_cell, x, dtype = tf.float32, sequence_length = seq_lengths, 
                 scope = 'lang_model')
-        output = tf.reshape(tf.concat(0, enc_outputs), [-1, self.rnn_size])
+        output = tf.reshape(tf.concat(axis=0, values=enc_outputs), [-1, self.rnn_size])
         logits = tf.matmul(output, self.out_W) + self.out_b
 
         return logits 
@@ -105,7 +105,7 @@ class LanguageModel(object):
 
         ## compute the loss
         placeholder=tf.ones([batch_size,1],dtype=tf.int32)*self.mapping.get_index(Mapping.Mapping.PAD)
-        label_sequences=tf.concat(1,[sequences[:,1:],placeholder])
+        label_sequences=tf.concat(axis=1,values=[sequences[:,1:],placeholder])
 
         loss = tf.nn.seq2seq.sequence_loss(
             [logits],
@@ -135,14 +135,14 @@ class LanguageModel(object):
         ## compute the loss
         placeholder=tf.ones([batch_size,1],dtype=tf.int32)*self.mapping.get_index(Mapping.Mapping.PAD)
         ## shift gold standard by one timestep 
-        label_sequences=tf.concat(1, [sequences[:,1:],placeholder])
+        label_sequences=tf.concat(axis=1, values=[sequences[:,1:],placeholder])
 
         label_sequences_flat = tf.reshape(
                                             tf.transpose(label_sequences,[1,0]),
                                             [-1]
                                          )
 
-        t2l=lambda t: tf.split(0,l,t)
+        t2l=lambda t: tf.split(axis=0,num_or_size_splits=l,value=t)
 
         loss = tf.nn.seq2seq.sequence_loss_by_example(
                                 t2l(logits),
@@ -323,12 +323,12 @@ def run_train(args):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     if(args.start_from is not None):
         saver.restore(sess,'{}/models/model-{}'.format(args.output_dir,args.start_from))
         completed_epochs=args.start_from
     
-    tf.train.SummaryWriter(log_dir,sess.graph)
+    tf.summary.FileWriter(log_dir,sess.graph)
 
     print "Session started"
 
@@ -562,7 +562,7 @@ def run_print_vars(args):
     model = LanguageModel(args.lang,mapping,args.representation,
                     args.max_seq_length, args.embedding_size,args.rnn_size)
 
-    for v in tf.all_variables(): 
+    for v in tf.global_variables(): 
         print v.name
 
     ## Creating placeholder for sequences, masks and lengths and dropout keep probability 
@@ -582,7 +582,7 @@ def run_print_vars(args):
 
     print 'after loading' 
 
-    for v in tf.all_variables(): 
+    for v in tf.global_variables(): 
         print v.name
 
 if __name__ == '__main__' :

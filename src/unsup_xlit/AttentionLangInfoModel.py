@@ -239,7 +239,7 @@ class AttentionModel():
         batch_size=tf.shape(prev_state)[0]
 
         ## reshaping and transposing enc_outputs
-        a3=tf.pack(enc_outputs)
+        a3=tf.stack(enc_outputs)
         a4=tf.transpose(a3,[1,0,2])
         a5=tf.reshape(a4,[-1,self.ctxvec_size],name='attn__a5__enc_outputs_shaped')
 
@@ -248,12 +248,12 @@ class AttentionModel():
 
         ## getting prev_state and prev_out_embed in the correct shape
         ## and duplicate them for cacatenating with enc_outputs
-        att_ref=tf.concat(1,[prev_state,prev_out_embed])
+        att_ref=tf.concat(axis=1,values=[prev_state,prev_out_embed])
         a1=tf.tile(att_ref,[1,num_ctx_vec])
         a2=tf.reshape(a1,[-1,self.dec_state_size+self.embedding_size],name='attn__a2__state__embed_shaped')
 
         ## preparing the input to the attention network
-        a6=tf.concat(1,[a2,a5],name='attn__a6__network_input')
+        a6=tf.concat(axis=1,values=[a2,a5],name='attn__a6__network_input')
 
         ###### Passing through attention network
         ## The network takes input for one encoder input and the current decoder state and output embedding and gives a scalar output
@@ -350,7 +350,7 @@ class AttentionModel():
             else: 
                 ## using the attention mechanism
                 context=self.compute_attention_context(state,current_emb,enc_output)
-                current_input=tf.concat(1,[current_emb,context])
+                current_input=tf.concat(axis=1,values=[current_emb,context])
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -361,8 +361,8 @@ class AttentionModel():
             # Generating one-hot labels for target_sequences
             labels = tf.expand_dims(target_sequence[:,i],1)
             indices = tf.expand_dims(tf.range(0,batch_size),1)
-            concated = tf.concat(1,[indices,labels])
-            onehot_labels = tf.sparse_to_dense(concated,tf.pack([batch_size,self.vocab_size[lang]]),1.0,0.0)
+            concated = tf.concat(axis=1,values=[indices,labels])
+            onehot_labels = tf.sparse_to_dense(concated,tf.stack([batch_size,self.vocab_size[lang]]),1.0,0.0)
 
             # Find probabilities of character
             logit_words = tf.matmul(output,self.out_W[lang])+self.out_b[lang]
@@ -371,7 +371,7 @@ class AttentionModel():
             output_id = tf.argmax(logit_words,1)
 
             # Finding cross entropy
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_words, onehot_labels)
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logit_words, labels=onehot_labels)
             # Takaing cross entropy for only non-padding characters
             cross_entropy = cross_entropy * target_masks[:,i]
 
@@ -470,7 +470,7 @@ class AttentionModel():
             else: 
                 ## using the attention mechanism
                 context=self.compute_attention_context(prev_states,current_emb,enc_output)
-                current_input=tf.concat(1,[current_emb,context])
+                current_input=tf.concat(axis=1,values=[current_emb,context])
 
             # Run one step of the decoder cell. Updates 'state' and store output in 'output'
             output = None
@@ -505,13 +505,13 @@ class AttentionModel():
                 prev_best_outputs=prev_symbols
             else: 
                 top_beam_prev_outputs = tf.gather( prev_best_outputs, tf.reshape(best_flat_indices,[-1]) )
-                prev_best_outputs = tf.concat(1,[top_beam_prev_outputs,prev_symbols])
+                prev_best_outputs = tf.concat(axis=1,values=[top_beam_prev_outputs,prev_symbols])
 
             ##### update beam size after first iteration 
             if i==0:
                 cur_beam_size=beam_size
-                enc_output=tf.unpack(
-                        tf.reshape(   tf.tile(tf.pack(  enc_output   ),[1,1,beam_size]),
+                enc_output=tf.unstack(
+                        tf.reshape(   tf.tile(tf.stack(  enc_output   ),[1,1,beam_size]),
                                     [self.max_sequence_length,-1,self.input_encoder.get_output_size()]
                                   )
                         )
@@ -530,7 +530,7 @@ class AttentionModel():
            
                 #### compute best-n candidates now 
                 top_n_prev_outputs = tf.gather( prev_best_outputs_for_final, tf.reshape(final_flat_indices,[-1]) )
-                final_outputs = tf.concat(1,[top_n_prev_outputs,final_flat_symbols])
+                final_outputs = tf.concat(axis=1,values=[top_n_prev_outputs,final_flat_symbols])
 
         return (tf.reshape(final_outputs,[-1,topn,self.max_sequence_length]),final_scores/self.max_sequence_length)
 

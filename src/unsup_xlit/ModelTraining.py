@@ -457,12 +457,12 @@ if __name__ == '__main__' :
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     if(start_from is not None):
         saver.restore(sess,'{}/temp_models/my_model-{}'.format(output_dir,start_from))
         completed_epochs=start_from
     
-    tf.train.SummaryWriter(log_dir,sess.graph)
+    tf.summary.FileWriter(log_dir,sess.graph)
 
     print "Session started"
 

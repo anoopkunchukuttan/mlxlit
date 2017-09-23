@@ -179,7 +179,7 @@ if __name__ == '__main__' :
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     saver.restore(sess,model_fname)
 
     print "Session started"

@@ -26,7 +26,7 @@ class SimpleRnnEncoder(Encoder):
     def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
-        x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
+        x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x,name='encoder_input')
         cell=tf.nn.rnn_cell.DropoutWrapper(self.encoder_cell,output_keep_prob=dropout_keep_prob)
         enc_outputs, states = tf.nn.rnn(cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
         return states, enc_outputs
@@ -49,7 +49,7 @@ class BidirectionalRnnEncoder(Encoder):
     def encode(self, sequence_embeddings, sequence_lengths,dropout_keep_prob):
         x = tf.transpose(sequence_embeddings,[1,0,2])
         x = tf.reshape(x,[-1,self.embedding_size])
-        x = tf.split(0,self.max_sequence_length,x,name='encoder_input')
+        x = tf.split(axis=0,num_or_size_splits=self.max_sequence_length,value=x,name='encoder_input')
         fw_cell=tf.nn.rnn_cell.DropoutWrapper(self.fw_encoder_cell,output_keep_prob=dropout_keep_prob)
         bw_cell=tf.nn.rnn_cell.DropoutWrapper(self.bw_encoder_cell,output_keep_prob=dropout_keep_prob)
         enc_outputs, states, _ = tf.nn.bidirectional_rnn(fw_cell, bw_cell, x, dtype = tf.float32, sequence_length = sequence_lengths)
@@ -107,16 +107,16 @@ class CNNEncoder(Encoder):
 
         ## encoder output matrix of dimension: [batch,max_sequence_length,len(filter_sizes)*num_filters]
         total_num_filters=self.num_filters*len(self.filter_sizes)
-        enc_output_matrix=tf.reshape(tf.squeeze(tf.concat(3,pooled_outputs)),
+        enc_output_matrix=tf.reshape(tf.squeeze(tf.concat(axis=3,values=pooled_outputs)),
                 [-1,self.max_sequence_length,total_num_filters])
 
         ## output encoding  and dropout 
-        enc_outputs=tf.unpack(tf.transpose(tf.nn.dropout(enc_output_matrix,dropout_keep_prob),[1,0,2]))
+        enc_outputs=tf.unstack(tf.transpose(tf.nn.dropout(enc_output_matrix,dropout_keep_prob),[1,0,2]))
 
         ## final state generation: taking as average of all time step vectors
         def state_gen_func(batch_no): 
             s=tf.slice(enc_output_matrix,[batch_no,0,0],[1,self.max_sequence_length,self.get_output_size()])
-            return tf.add_n(tf.unpack(tf.squeeze(s)))/self.max_sequence_length
+            return tf.add_n(tf.unstack(tf.squeeze(s)))/self.max_sequence_length
 
         batch_size=tf.shape(enc_output_matrix)[0]
         states=tf.map_fn(state_gen_func,tf.range(0,batch_size),dtype=tf.float32)
