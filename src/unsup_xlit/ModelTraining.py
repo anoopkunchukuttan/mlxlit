@@ -164,16 +164,16 @@ if __name__ == '__main__' :
     #####################################
 
     # Creating parser
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('--data_dir', type = str, help = 'data directory')
     parser.add_argument('--output_dir', type = str, help = 'output folder name')
-    parser.add_argument('--train_size', type = int, metavar = 'N', default = -1, help = 'use the first N sequence pairs for training')
+    parser.add_argument('--train_size', type = int, metavar = 'N', default = -1, help = 'use the first N sequence pairs for training. N=-1 means use the entire training set.')
 
     parser.add_argument('--lang_pairs', type = str, default = None, help = 'List of language pairs for supervised training given as: "lang1-lang2,lang3-lang4,..."')
     parser.add_argument('--unseen_langs', type = str, default = None, help = 'List of languages not seen during training given as: "lang1,lang2,lang3,lang4,..."')
 
-    parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1)simple_lstm_noattn (2) bilstm (3) cnn')
+    parser.add_argument('--enc_type', type = str, default = 'cnn',  help = 'encoder to use. One of (1) simple_lstm_noattn (2) bilstm (3) cnn')
     parser.add_argument('--separate_output_embedding', action='store_true', default = False,  help = 'Should separate embeddings be used on the input and output side. Generally the same embeddings are to be used. This is used only for Indic-Indic transliteration, when input is phonetic and output is onehot_shared')
     parser.add_argument('--prefix_tgtlang', action='store_true', default = False,
             help = 'Prefix the input sequence with the language code for the target language')
@@ -191,12 +191,12 @@ if __name__ == '__main__' :
     parser.add_argument('--dropout_keep_prob', type = float, default = 0.5, help = 'keep probablity for the dropout layers')
     parser.add_argument('--infer_every', type = int, default = 1, help = 'write predicted outputs for test data after these many epochs, 0 if not required')
 
-    parser.add_argument('--topn', type = int, default = 10, help = 'The top-n candidates to report')
+    parser.add_argument('--topn', type = int, default = 10, help = 'the number of best candidates to output by the decoder')
     parser.add_argument('--beam_size', type = int, default = 5, help = 'beam size for decoding')
 
-    parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the final epochs from previous runs')
+    parser.add_argument('--start_from', type = int, default = None, help = 'epoch to restore model from. This must be one of the epochs for which model has been saved')
 
-    parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic"')
+    parser.add_argument('--representation', type = str, default = 'onehot',  help = 'input representation, which can be specified in two ways: (i) one of "phonetic", "onehot", "onehot_and_phonetic" - this representation is used for all languages, (ii) "lang1:<rep1>,lang2:<rep2>" - this representation is used for all languages, rep can be one of "phonetic", "onehot", "onehot_and_phonetic" ') 
     parser.add_argument('--shared_mapping_class', type = str, default = 'IndicPhoneticMapping',  help = 'class to be used for shared mapping. Possible values: IndicPhoneticMapping, CharacterMapping')
 
     args = parser.parse_args()

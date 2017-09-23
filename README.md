@@ -136,18 +136,18 @@ For details on more parameters, run `python ModelDecoding.py --help`. For parame
 
 Copyright Anoop Kunchukuttan 2016 - present
  
-YYYYY is free software: you can redistribute it and/or modify
+MLXLIT is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-YYYYY is distributed in the hope that it will be useful, 
+MLXLIT is distributed in the hope that it will be useful, 
 but WITHOUT ANY WARRANTY; without even the implied warranty of 
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
 GNU General Public License for more details. 
 
 You should have received a copy of the GNU General Public License 
-along with Indic NLP Library.  If not, see <http://www.gnu.org/licenses/>.
+along with MLXLIT.  If not, see <http://www.gnu.org/licenses/>.
 
 
 
