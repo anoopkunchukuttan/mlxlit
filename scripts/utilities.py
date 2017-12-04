@@ -9,6 +9,8 @@ from scipy.misc import logsumexp
 import itertools as it
 import random
 
+from cfilt.transliteration.analysis import slavic_characters
+
 from indicnlp.script import  indic_scripts as isc
 from indicnlp import loader
 
@@ -493,6 +495,31 @@ def to_python_literal(infname,outfname):
             outfile.write(u'u"\\u{:04x}"'.format(ord(c)) +u',\n')
         outfile.write(']\n')
 
+def remove_vowels_slavic(infname,outfname): 
+    """
+    """
+
+    def process(text): 
+        return u' '.join(filter(lambda c: c not in slavic_characters.latin_vowels, text.split(u' ')))
+
+    with codecs.open(outfname,'w','utf-8') as outfile: 
+        for (sent_no, parsed_lines) in iterate_nbest_list(infname):     
+            for parsed_line in parsed_lines:
+                parsed_line[1] = process(parsed_line[1])
+                outfile.write( u'{} ||| {} ||| {} ||| {}\n'.format( *parsed_line ) )  
+
+#def remove_vowels_slavic(infname,outfname): 
+#    """
+#    """
+#
+#    def process(text): 
+#        return u' '.join(filter(lambda c: c not in slavic_characters.latin_vowels, text.split(u' ')))
+#
+#    with codecs.open(infname,'r','utf-8') as infile,\
+#         codecs.open(outfname,'w','utf-8') as outfile: 
+#        for line in infile: 
+#            outfile.write( process(line.strip()) + u'\n'  )  
+
 if __name__=='__main__': 
 
     loader.load()
@@ -515,6 +542,7 @@ if __name__=='__main__':
             'extract_common_corpus_wikidata': extract_common_corpus_wikidata,
 
             'remove_terminal_halant': remove_terminal_halant,
+            'remove_vowels_slavic': remove_vowels_slavic,
 
             'simple_ensemble': simple_ensemble,
 

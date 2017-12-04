@@ -1070,3 +1070,56 @@ export CUDA_VISIBLE_DEVICES=0
 #ta-hi-026
 #ta-kn-039
 #READ
+
+
+##### deleting vowels in the gold standard data for ar-slavic_latin
+
+dataset='ar-slavic_latin'
+data_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/data/sup/$dataset
+output_dir=/home/development/anoop/experiments/multilingual_unsup_xlit/results/sup/$dataset
+#data_dir=/media/anoop/BIG_STORE/experiment_backups/krishna/multilingual_unsup_xlit/data/sup/$dataset
+#output_dir=/media/anoop/BIG_STORE/experiment_backups/krishna/multilingual_unsup_xlit/results/sup/$dataset
+XLIT_HOME=/home/anoop/src/multilingual_transliteration_revision/conll2016_unsup_xlit
+
+new_data_dir=remove_vowels/$dataset/reference/
+
+#for langpair in `echo ar-cs-038 ar-pl-035 ar-sk-031 ar-sl-037` 
+for langpair in `echo ar-cs-011 ar-pl-012 ar-sk-008 ar-sl-012` 
+do 
+    src_lang=`echo $langpair | cut -f 1 -d '-'`
+    tgt_lang=`echo $langpair | cut -f 2 -d '-'`
+    iteration=`echo $langpair | cut -f 3 -d '-'`
+
+    ## bilingual 
+    #infile=$output_dir/2_bilingual/onehot/$src_lang-$tgt_lang/outputs/${iteration}test.nbest.$src_lang-$tgt_lang.$tgt_lang
+    #outfile=2_bilingual/${iteration}test.nbest.$src_lang-$tgt_lang.$tgt_lang
+
+    ## multilingual 
+    #infile=$output_dir/2_multilingual/onehot_shared/multi-conf/outputs/${iteration}test.nbest.$src_lang-$tgt_lang.$tgt_lang
+    #outfile=2_multilingual/${iteration}test.nbest.$src_lang-$tgt_lang.$tgt_lang
+
+    ## reference 
+    #infile=$data_dir/multi-conf/test/$tgt_lang-$src_lang
+    #outfile=reference/$tgt_lang-$src_lang
+
+    #python utilities.py remove_vowels_slavic \
+    #    $infile \
+    #    $outfile 
+
+    ##################  evaluation 
+    o=remove_vowels/$dataset/2_bilingual
+
+    python $XLIT_HOME/src/cfilt/transliteration/news2015_utilities.py gen_news_output \
+            "$new_data_dir/test.$src_lang-$tgt_lang.id" \
+            "$new_data_dir/test.$src_lang-$tgt_lang.xml" \
+            "$o/${iteration}test.nbest.$src_lang-$tgt_lang.${tgt_lang}" \
+            "$o/${iteration}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+            "system" "conll2016" "$src_lang" "$tgt_lang"  
+    
+    # run evaluation 
+    python $XLIT_HOME/scripts/news_evaluation_script/news_evaluation.py \
+            -t "$new_data_dir/test.$src_lang-$tgt_lang.xml" \
+            -i "$o/${iteration}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.xml" \
+            -o "$o/${iteration}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.detaileval.csv" \
+             > "$o/${iteration}test.nbest.$src_lang-$tgt_lang.${tgt_lang}.eval"
+done 
