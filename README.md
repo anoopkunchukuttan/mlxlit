@@ -18,10 +18,8 @@ Python packages required:
 - [Indic NLP Library](https://github.com/anoopkunchukuttan/indic_nlp_library)
 - [IIT Bombay Unsupervised transliteration](https://github.com/anoopkunchukuttan/transliterator)(_required for computing evaluation metrics for transliteration, and for analysis or visualization_)
 
-## Training 
 
-
-### Training Dataset Format
+## Dataset Format
 
 The data files are all in the format: one sequence per line, separated by spaces. They are all organized in a directory which has the following structure. It contains the following sub-directories: 
 
@@ -31,7 +29,10 @@ The data files are all in the format: one sequence per line, separated by spaces
    - `test.<src_lang>-<tgt_lang>.xml`: xml file in the format required by the NEWS shared task evaluation scripts.
    - `test.<src_lang>-<tgt_lang>.id`: A text file with one line for every sequence in the dataset. Each line contains the following text: `<seqno>_1_0`.  `seqno` starts from 1 e.g. `10_1_0`
 
-### Training a Model 
+
+## Usage 
+
+### Training
 
 To train the models, use the `src/unsup_xlit/ModelTraining.py` script. A common training run is as follows: 
 
