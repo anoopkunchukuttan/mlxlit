@@ -25,11 +25,11 @@ Python packages required:
 
 The data files are all in the format: one sequence per line, separated by spaces. They are all organized in a directory which has the following structure. It contains the following sub-directories: 
 
-`parallel_train`: Containing training data. Contains two files for every language pair in training: `<src_lang>-<tgt_lang>.<src_lang>` (source file) and `<src_lang>-<tgt_lang>.<tgt_lang>` (target file). 
-`parallel_valid`: Containing validation data. Contains two files for every language pair in training: `<src_lang>-<tgt_lang>.<src_lang>` (source file) and `<src_lang>-<tgt_lang>.<tgt_lang>` (target file). 
-`test`: Containing test data.  Contains two files for every language pair in training: `<src_lang>-<tgt_lang>` (source file) and `<tgt_lang>-<src_lang>` (target file). In addition, the directory contains two more files for every language pair for evaluation: 
-  - `test.<src_lang>-<tgt_lang>.xml`: xml file in the format required by the NEWS shared task evaluation scripts.
-  - `test.<src_lang>-<tgt_lang>.id`: A text file with one line for every sequence in the dataset. Each line contains the following text: `<seqno>_1_0`.  `seqno` starts from 1 e.g. `10_1_0`
+- `parallel_train`: Containing training data. Contains two files for every language pair in training: `<src_lang>-<tgt_lang>.<src_lang>` (source file) and `<src_lang>-<tgt_lang>.<tgt_lang>` (target file). 
+- `parallel_valid`: Containing validation data. Contains two files for every language pair in training: `<src_lang>-<tgt_lang>.<src_lang>` (source file) and `<src_lang>-<tgt_lang>.<tgt_lang>` (target file). 
+- `test`: Containing test data.  Contains two files for every language pair in training: `<src_lang>-<tgt_lang>` (source file) and `<tgt_lang>-<src_lang>` (target file). In addition, the directory contains two more files for every language pair for evaluation: 
+   - `test.<src_lang>-<tgt_lang>.xml`: xml file in the format required by the NEWS shared task evaluation scripts.
+   - `test.<src_lang>-<tgt_lang>.id`: A text file with one line for every sequence in the dataset. Each line contains the following text: `<seqno>_1_0`.  `seqno` starts from 1 e.g. `10_1_0`
 
 ### Training a Model 
 
@@ -138,13 +138,12 @@ optional arguments:
 
 The output directory has the following structure: 
 
-`train.log`: log file generated during training 
+- `train.log`: log file generated during training 
 `mappings`: directory containing vocabulary of all the languages and vocabulary to id mappings. A JSON file for every languages' vocabulary is found in this directory with the name `mapping_<lang>.json`. e.g. `my_model-1` 
-`temp_models`: direcory containing saved models. The saved models are named as `my_model-<epoch_number>`. `<epoch_number>` is not zero padded. e.g. `my_model-1`
+- `temp_models`: direcory containing saved models. The saved models are named as `my_model-<epoch_number>`. `<epoch_number>` is not zero padded. e.g. `my_model-1`
 `outputs`: Directory containing output after decoding test set with models saved. The output file is named as `<epoch_number>test.nbest.<src_lang>-<tgt_lang>.<tgt_lang>. <epoch_number>` is 3-digit zero-padded. e.g. `001test.nbest.en-hi.hi`
-`validation`: Directory containing output after decoding test set with models saved. The output file is named as `<epoch_number>test.nbest.<src_lang>-<tgt_lang>.<tgt_lang>`. `<epoch_number>` is 3-digit zero-padded. e.g. `001test.nbest.en-hi.hi`
-
-`final_output`: ignore this directory
+- `validation`: Directory containing output after decoding test set with models saved. The output file is named as `<epoch_number>test.nbest.<src_lang>-<tgt_lang>.<tgt_lang>`.  `<epoch_number>` is 3-digit zero-padded. e.g. `001test.nbest.en-hi.hi`
+- `final_output`: ignore this directory
 
 ## Decoding 
 
